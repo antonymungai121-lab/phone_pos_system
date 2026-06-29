@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PhonePOS &mdash; Inventory</title>
+  <meta name="description" content="View and manage phone inventory by IMEI and status." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+</head>
+<body class="app-page">
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <span class="logo-icon"><i class="fa-solid fa-mobile-screen-button"></i></span>
+      <span class="logo-label">PhonePOS</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="dashboard.html" class="nav-item " data-page="dashboard"><span class="nav-icon"><i class="fa-solid fa-house"></i></span><span class="nav-label">Dashboard</span></a>
+      <a href="pos.html"       class="nav-item "       data-page="pos">      <span class="nav-icon"><i class="fa-solid fa-cash-register"></i></span><span class="nav-label">Point of Sale</span></a>
+      <a href="inventory.html" class="nav-item active" data-page="inventory"><span class="nav-icon"><i class="fa-solid fa-boxes-stacked"></i></span><span class="nav-label">Inventory</span></a>
+      <a href="products.html"  class="nav-item "  data-page="products"> <span class="nav-icon"><i class="fa-solid fa-clipboard-list"></i></span><span class="nav-label">Products</span></a>
+      <a href="reports.html"   class="nav-item "   data-page="reports">  <span class="nav-icon"><i class="fa-solid fa-chart-bar"></i></span><span class="nav-label">Reports</span></a>
+      <a href="users.html"     class="nav-item "     data-page="users">    <span class="nav-icon"><i class="fa-solid fa-users"></i></span><span class="nav-label">Users</span></a>
+      <a href="shops.html"     class="nav-item "     data-page="shops">    <span class="nav-icon"><i class="fa-solid fa-store"></i></span><span class="nav-label">Branches</span></a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-chip" id="myAccountTrigger" title="My Account">
+        <span class="user-avatar" id="userAvatar">?</span>
+        <div class="user-info">
+          <span class="user-name" id="sidebarUsername">&mdash;</span>
+          <span class="user-role" id="sidebarRole">&mdash;</span>
+        </div>
+      </div>
+      <button id="logoutBtn" class="btn-logout" title="Logout"><i class="fa-solid fa-power-off"></i></button>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <header class="topbar">
+      <div class="topbar-left">
+        <h1 class="page-title">Inventory</h1>
+        <span class="shop-badge" id="shopBadge">&mdash;</span>
+      </div>
+      <div class="topbar-right">
+        <input type="search" id="inventorySearch" placeholder="Search IMEI or product&hellip;" style="max-width:240px" />
+        <button id="openScanModal" class="btn btn-primary btn-sm">
+          <i class="fa-solid fa-barcode"></i> Scan IMEI
+        </button>
+        <button id="openStockModal" class="btn btn-outline btn-sm">
+          <i class="fa-solid fa-plus"></i> Stock Accessory
+        </button>
+      </div>
+    </header>
+
+    <div class="card glass">
+      <div class="table-wrap">
+        <table class="data-table" id="inventoryTable">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>IMEI / Serial</th>
+              <th>Product</th>
+              <th>Status</th>
+              <th>Date Added</th>
+              <th>Date Sold</th>
+            </tr>
+          </thead>
+          <tbody id="inventoryTbody">
+            <tr><td colspan="6" class="table-empty">Loading&hellip;</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <!-- Scan IMEI Modal -->
+  <div id="scanModal" class="modal-overlay hidden" role="dialog">
+    <div class="modal-box glass">
+      <div class="modal-header">
+        <h3>Scan / Add IMEI</h3>
+        <button class="modal-close" data-close="scanModal"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="scanForm" class="pos-form">
+        <div class="form-group">
+          <label for="scanImei">IMEI Number</label>
+          <input type="text" id="scanImei" placeholder="15-digit IMEI" maxlength="15" pattern="\d15" required />
+        </div>
+        <div class="form-group">
+          <label for="scanProduct">Product</label>
+          <select id="scanProduct" required>
+            <option value="">— select product —</option>
+          </select>
+        </div>
+        <div id="scanError" class="alert alert-error hidden"></div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" data-close="scanModal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Add to Inventory</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Stock Accessory Modal -->
+  <div id="stockModal" class="modal-overlay hidden" role="dialog">
+    <div class="modal-box glass">
+      <div class="modal-header">
+        <h3>Stock Accessory Units</h3>
+        <button class="modal-close" data-close="stockModal"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="stockForm" class="pos-form">
+        <div class="form-group">
+          <label for="stockProduct">Accessory Product</label>
+          <select id="stockProduct" required>
+            <option value="">— select accessory —</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="stockQty">Quantity</label>
+          <input type="number" id="stockQty" placeholder="e.g. 10" min="1" max="500" required />
+        </div>
+        <div id="stockError" class="alert alert-error hidden"></div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" data-close="stockModal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Add Stock</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/inventory.js"></script>
+</body>
+</html>

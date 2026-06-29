@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PhonePOS — Branches</title>
+  <meta name="description" content="Manage shop branches and assign staff." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+</head>
+<body class="app-page">
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo"><span class="logo-icon"><i class="fa-solid fa-mobile-screen-button"></i></span><span class="logo-label">PhonePOS</span></div>
+    <nav class="sidebar-nav">
+      <a href="dashboard.html" class="nav-item" data-page="dashboard"><span class="nav-icon"><i class="fa-solid fa-house"></i></span><span class="nav-label">Dashboard</span></a>
+      <a href="pos.html"       class="nav-item" data-page="pos"><span class="nav-icon"><i class="fa-solid fa-cash-register"></i></span><span class="nav-label">Point of Sale</span></a>
+      <a href="inventory.html" class="nav-item" data-page="inventory"><span class="nav-icon"><i class="fa-solid fa-boxes-stacked"></i></span><span class="nav-label">Inventory</span></a>
+      <a href="products.html"  class="nav-item" data-page="products"><span class="nav-icon"><i class="fa-solid fa-clipboard-list"></i></span><span class="nav-label">Products</span></a>
+      <a href="reports.html"   class="nav-item" data-page="reports"><span class="nav-icon"><i class="fa-solid fa-chart-bar"></i></span><span class="nav-label">Reports</span></a>
+      <a href="users.html"     class="nav-item" data-page="users"><span class="nav-icon"><i class="fa-solid fa-users"></i></span><span class="nav-label">Users</span></a>
+      <a href="shops.html"     class="nav-item active" data-page="shops"><span class="nav-icon"><i class="fa-solid fa-store"></i></span><span class="nav-label">Branches</span></a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-chip" id="myAccountTrigger" title="My Account" style="cursor:pointer">
+        <span class="user-avatar" id="userAvatar">?</span>
+        <div class="user-info"><span class="user-name" id="sidebarUsername">—</span><span class="user-role" id="sidebarRole">—</span></div>
+      </div>
+      <button id="logoutBtn" class="btn-logout" title="Logout"><i class="fa-solid fa-power-off"></i></button>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <header class="topbar">
+      <div class="topbar-left">
+        <h2 class="page-title">Branch Management</h2>
+        <span class="shop-badge" id="shopBadge">—</span>
+      </div>
+      <div class="topbar-right">
+        <button id="openAddShopModal" class="btn btn-primary btn-sm">+ Add Branch</button>
+      </div>
+    </header>
+
+    <!-- Branch cards -->
+    <div id="shopsGrid" class="shops-grid">
+      <p class="table-empty">Loading branches…</p>
+    </div>
+
+    <!-- Staff per branch -->
+    <div class="card glass" id="branchStaffCard">
+      <div class="card-header">
+        <h3 class="card-title" id="staffCardTitle">Select a branch to view its staff</h3>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr><th>#</th><th>Username</th><th>Role</th><th>Actions</th></tr>
+          </thead>
+          <tbody id="branchStaffTbody">
+            <tr><td colspan="4" class="table-empty">Click a branch card above.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <!-- ── Add Branch Modal ──────────────────────────────────────────────── -->
+  <div id="addShopModal" class="modal-overlay hidden" role="dialog">
+    <div class="modal-box glass">
+      <div class="modal-header">
+        <h3 id="shopModalTitle">Add New Branch</h3>
+        <button class="modal-close" data-close="addShopModal"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="addShopForm" class="pos-form">
+        <input type="hidden" id="editShopId" value="" />
+        <div class="form-group">
+          <label for="shopName">Branch Name</label>
+          <div class="input-wrap">
+            <span class="input-icon"><i class="fa-solid fa-store"></i></span>
+            <input type="text" id="shopName" placeholder="e.g. Westlands Branch" required />
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="shopLocation">Location</label>
+          <div class="input-wrap">
+            <span class="input-icon"><i class="fa-solid fa-location-dot"></i></span>
+            <input type="text" id="shopLocation" placeholder="e.g. Westlands, Nairobi" />
+          </div>
+        </div>
+        <div id="addShopError" class="alert alert-error hidden"></div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" data-close="addShopModal">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="shopSubmitBtn">Create Branch</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── Change Password Modal (global, all roles) ─────────────────────── -->
+  <div id="changePwdModal" class="modal-overlay hidden" role="dialog">
+    <div class="modal-box glass">
+      <div class="modal-header">
+        <h3>My Account</h3>
+        <button class="modal-close" data-close="changePwdModal"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="account-info-card glass" style="margin-bottom:20px">
+        <div class="account-avatar" id="pwdModalAvatar">A</div>
+        <div class="account-details">
+          <p class="account-username" id="pwdModalUsername">—</p>
+          <p class="account-meta"    id="pwdModalRole">—</p>
+          <p class="account-meta"    id="pwdModalShop">—</p>
+        </div>
+      </div>
+      <div class="section-divider"><span>Change Password</span></div>
+      <form id="globalChangePwdForm" class="pos-form" style="margin-top:16px">
+        <div class="form-group">
+          <label for="gCurrentPwd">Current Password</label>
+          <div class="input-wrap">
+            <span class="input-icon"><i class="fa-solid fa-lock"></i></span>
+            <input type="password" id="gCurrentPwd" placeholder="Enter current password" required />
+            <button type="button" class="pwd-toggle" data-target="gCurrentPwd"><i class="fa-regular fa-eye"></i></button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="gNewPwd">New Password</label>
+          <div class="input-wrap">
+            <span class="input-icon"><i class="fa-solid fa-key"></i></span>
+            <input type="password" id="gNewPwd" placeholder="Minimum 8 characters" minlength="8" required />
+            <button type="button" class="pwd-toggle" data-target="gNewPwd"><i class="fa-regular fa-eye"></i></button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="gConfirmPwd">Confirm New Password</label>
+          <div class="input-wrap">
+            <span class="input-icon"><i class="fa-solid fa-check"></i></span>
+            <input type="password" id="gConfirmPwd" placeholder="Re-enter new password" minlength="8" required />
+          </div>
+        </div>
+        <div id="gPwdError"   class="alert alert-error   hidden"></div>
+        <div id="gPwdSuccess" class="alert alert-success hidden"></div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" data-close="changePwdModal">Close</button>
+          <button type="submit" class="btn btn-primary">Update Password</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/shops.js"></script>
+</body>
+</html>

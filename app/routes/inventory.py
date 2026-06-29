@@ -1,61 +1,96 @@
+import logging
+import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
 from app.database import get_db
-from app import models
-import uuid # <-- NEW: The engine that generates unique fake serial numbers
+from app import models, schemas
+from app.auth import require_cashier, require_manager, get_current_user
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/inventory", tags=["Inventory"])
 
-class ScanItem(BaseModel):
-    imei_number: str
-    product_id: int
-    shop_id: int
 
-# NEW: Tells the backend what to expect from the Accessory Stock-In box
-class BulkAccessory(BaseModel):
-    product_id: int
-    shop_id: int
-    quantity: int
+@router.get("/", response_model=list[schemas.IMEIResponse])
+def get_inventory(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """
+    List inventory for the current user's shop.
+    Admins see all shops; cashiers/managers see only their own shop.
+    """
+    query = db.query(models.IMEIItem)
+    if current_user.role != "admin":
+        query = query.filter(models.IMEIItem.shop_id == current_user.shop_id)
+    return query.all()
 
-# 1. Existing route: Get all inventory
-@router.get("/")
-def get_inventory(db: Session = Depends(get_db)):
-    return db.query(models.IMEIItem).all()
 
-# 2. Existing route: Scan in a specific phone
-@router.post("/scan")
-def receive_stock(item: ScanItem, db: Session = Depends(get_db)):
-    existing = db.query(models.IMEIItem).filter(models.IMEIItem.imei_number == item.imei_number).first()
+@router.post("/scan", response_model=schemas.IMEIResponse, status_code=201)
+def receive_stock(
+    item: schemas.IMEICreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_cashier),
+):
+    """
+    Scan in a specific phone by IMEI.
+    The shop is automatically set to the logged-in user's shop — not client-controlled.
+    """
+    existing = db.query(models.IMEIItem).filter(
+        models.IMEIItem.imei_number == item.imei_number
+    ).first()
     if existing:
-        raise HTTPException(status_code=400, detail="IMEI already exists in database!")
-        
+        raise HTTPException(status_code=400, detail="IMEI already exists in database.")
+
+    # Verify the product exists
+    product = db.query(models.Product).filter(models.Product.id == item.product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found.")
+
     new_item = models.IMEIItem(
         imei_number=item.imei_number,
         product_id=item.product_id,
-        shop_id=item.shop_id,
-        status="Available"
+        shop_id=current_user.shop_id,  # ← from JWT, not from request body
+        status="Available",
     )
     db.add(new_item)
     db.commit()
-    return {"detail": "Stock added successfully!", "imei_number": new_item.imei_number}
+    db.refresh(new_item)
+    logger.info("IMEI %s stocked in at shop %s by %s", item.imei_number, current_user.shop_id, current_user.username)
+    return new_item
 
-# 3. NEW Route: Bulk-add accessories
-@router.post("/stock-accessory")
-def stock_accessory_bulk(data: BulkAccessory, db: Session = Depends(get_db)):
-    if data.quantity <= 0:
-        raise HTTPException(status_code=400, detail="Quantity must be at least 1")
-    
-    # Loop through the quantity and create a fake serial for each one
+
+@router.post("/stock-accessory", status_code=201)
+def stock_accessory_bulk(
+    data: schemas.BulkAccessoryCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_cashier),
+):
+    """
+    Bulk-add accessory units with auto-generated serials.
+    Shop is derived from the authenticated user's session.
+    """
+    product = db.query(models.Product).filter(models.Product.id == data.product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found.")
+
+    items_added = []
     for _ in range(data.quantity):
-        fake_imei = f"ACC-{uuid.uuid4().hex[:8].upper()}"
+        fake_serial = f"ACC-{uuid.uuid4().hex[:10].upper()}"
         new_item = models.IMEIItem(
-            imei_number=fake_imei,
+            imei_number=fake_serial,
             product_id=data.product_id,
-            shop_id=data.shop_id,
-            status="Available"
+            shop_id=current_user.shop_id,  # ← from JWT
+            status="Available",
         )
         db.add(new_item)
-    
+        items_added.append(fake_serial)
+
     db.commit()
-    return {"detail": f"Successfully added {data.quantity} units to stock!"}
+    logger.info(
+        "%d units of product %s stocked at shop %s by %s",
+        data.quantity, data.product_id, current_user.shop_id, current_user.username,
+    )
+    return {
+        "detail": f"Successfully added {data.quantity} units to stock.",
+        "serials_generated": items_added,
+    }

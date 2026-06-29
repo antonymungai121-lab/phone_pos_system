@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PhonePOS — Sign In</title>
+  <meta name="description" content="Multi-branch phone shop point of sale system. Secure login and account setup." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+</head>
+<body class="auth-page">
+
+  <!-- Animated background -->
+  <div class="auth-bg">
+    <div class="auth-blob blob-1"></div>
+    <div class="auth-blob blob-2"></div>
+    <div class="auth-blob blob-3"></div>
+  </div>
+
+  <div class="auth-card glass" id="authCard">
+
+    <!-- Logo -->
+    <div class="auth-logo">
+      <div class="logo-icon">📱</div>
+      <h1 class="auth-title">PhonePOS</h1>
+      <p class="auth-subtitle">Multi-Branch Point of Sale</p>
+    </div>
+
+    <!-- Tab switcher -->
+    <div class="auth-tabs" id="authTabs">
+      <button class="auth-tab active" id="tabLogin"    data-tab="login">Sign In</button>
+      <button class="auth-tab"        id="tabRegister" data-tab="register">Create Account</button>
+    </div>
+
+    <!-- ── LOGIN FORM ───────────────────────────────────────── -->
+    <form id="loginForm" class="auth-form" autocomplete="off">
+      <div class="form-group">
+        <label for="loginUsername">Username</label>
+        <div class="input-wrap">
+          <span class="input-icon"><i class="fa-solid fa-user"></i></span>
+          <input type="text" id="loginUsername" placeholder="Enter username"
+                 required autocomplete="username" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="loginPassword">Password</label>
+        <div class="input-wrap">
+          <span class="input-icon"><i class="fa-solid fa-lock"></i></span>
+          <input type="password" id="loginPassword" placeholder="Enter password"
+                 required autocomplete="current-password" />
+          <button type="button" class="pwd-toggle" data-target="loginPassword"><i class="fa-regular fa-eye"></i></button>
+        </div>
+      </div>
+
+      <div id="loginError" class="alert alert-error hidden"></div>
+
+      <button type="submit" class="btn btn-primary btn-full" id="loginBtn">
+        <span class="btn-text">Sign In</span>
+        <span class="btn-loader hidden">⏳ Signing in…</span>
+      </button>
+    </form>
+
+    <!-- ── CREATE ACCOUNT FORM ─────────────────────────────── -->
+    <form id="registerForm" class="auth-form hidden" autocomplete="off">
+
+      <!-- First-time setup notice -->
+      <div id="setupNotice" class="setup-notice hidden">
+        <div class="setup-notice-icon"><i class="fa-solid fa-rocket"></i></div>
+        <div>
+          <strong>First-Time Setup</strong>
+          <p>No accounts exist yet. This will create the <em>admin</em> account for your system.</p>
+        </div>
+      </div>
+
+      <!-- Already has users — locked -->
+      <div id="registrationClosed" class="setup-notice setup-notice-locked hidden">
+        <div class="setup-notice-icon"><i class="fa-solid fa-lock"></i></div>
+        <div>
+          <strong>Registration Closed</strong>
+          <p>Ask your system admin to create an account for you, then sign in above.</p>
+        </div>
+      </div>
+
+      <div id="registerFields">
+        <div class="form-group">
+          <label for="regUsername">Username</label>
+          <div class="input-wrap">
+            <span class="input-icon"><i class="fa-solid fa-user"></i></span>
+            <input type="text" id="regUsername" placeholder="Choose a username"
+                   minlength="3" required autocomplete="off" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="regPassword">Password</label>
+          <div class="input-wrap">
+            <span class="input-icon"><i class="fa-solid fa-lock"></i></span>
+            <input type="password" id="regPassword" placeholder="Minimum 8 characters"
+                   minlength="8" required autocomplete="new-password" />
+            <button type="button" class="pwd-toggle" data-target="regPassword"><i class="fa-regular fa-eye"></i></button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="regConfirm">Confirm Password</label>
+          <div class="input-wrap">
+            <span class="input-icon"><i class="fa-solid fa-check"></i></span>
+            <input type="password" id="regConfirm" placeholder="Re-enter password"
+                   minlength="8" required autocomplete="new-password" />
+            <button type="button" class="pwd-toggle" data-target="regConfirm"><i class="fa-regular fa-eye"></i></button>
+          </div>
+        </div>
+
+        <!-- Shop fields (only shown during first-time setup) -->
+        <div id="shopFields" class="shop-fields hidden">
+          <div class="section-divider">
+            <span>Branch Details</span>
+          </div>
+          <div class="form-group">
+            <label for="regShopName">Branch / Shop Name</label>
+            <div class="input-wrap">
+              <span class="input-icon"><i class="fa-solid fa-store"></i></span>
+              <input type="text" id="regShopName" placeholder="e.g. Main Branch"
+                     value="Main Branch" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="regShopLocation">Location</label>
+            <div class="input-wrap">
+              <span class="input-icon"><i class="fa-solid fa-location-dot"></i></span>
+              <input type="text" id="regShopLocation" placeholder="e.g. Nairobi CBD" />
+            </div>
+          </div>
+        </div>
+
+        <div id="registerError" class="alert alert-error hidden"></div>
+
+        <button type="submit" class="btn btn-primary btn-full" id="registerBtn">
+          <span class="btn-text">Create Admin Account</span>
+          <span class="btn-loader hidden">⏳ Creating…</span>
+        </button>
+      </div>
+    </form>
+
+    <p class="auth-footer">PhonePOS v2.0 &mdash; Secured with JWT</p>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/login.js"></script>
+</body>
+</html>
