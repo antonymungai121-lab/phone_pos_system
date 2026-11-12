@@ -1,9 +1,10 @@
 import logging
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app import models, schemas
-from app.auth import require_admin, get_current_user, get_password_hash
+from app.auth import require_admin, get_current_user, get_password_hash, require_manager
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/users", tags=["Users"])
@@ -42,10 +43,16 @@ def create_user(
 @router.get("/", response_model=list[schemas.UserResponse])
 def list_users(
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_admin),
+    current_user: models.User = Depends(require_manager),
 ):
-    """List all users. Admin only."""
-    return db.query(models.User).all()
+    """
+    List all users.
+    Admin sees all; manager sees only users in their own branch.
+    """
+    if current_user.role == "admin":
+        return db.query(models.User).all()
+    # Manager: only see users in their own shop
+    return db.query(models.User).filter(models.User.shop_id == current_user.shop_id).all()
 
 
 @router.delete("/{user_id}", status_code=204)
@@ -91,3 +98,45 @@ def reassign_user_shop(
     db.refresh(target)
     logger.info("User '%s' reassigned to shop '%s' by admin %s", target.username, shop.name, current_user.username)
     return target
+
+
+# ── Admin password reset ──────────────────────────────────────────────────────
+class AdminPasswordReset(BaseModel):
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def _min_length(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("Password must be at least 8 characters.")
+        return v
+
+
+@router.patch("/{user_id}/password", status_code=200)
+def admin_reset_password(
+    user_id: int,
+    payload: AdminPasswordReset,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_admin),
+):
+    """
+    Admin resets another user's password without knowing the old one.
+    Admins cannot reset their own password this way (use /auth/change-password).
+    """
+    if user_id == current_user.id:
+        raise HTTPException(
+            status_code=400,
+            detail="Use 'My Account → Change Password' to change your own password.",
+        )
+
+    target = db.query(models.User).filter(models.User.id == user_id).first()
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    target.hashed_password = get_password_hash(payload.new_password)
+    db.commit()
+    logger.info(
+        "Password reset for user '%s' (id=%s) by admin '%s'",
+        target.username, user_id, current_user.username,
+    )
+    return {"message": f"Password for '{target.username}' has been reset successfully."}

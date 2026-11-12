@@ -1,36 +1,179 @@
-/** inventory.js — displays inventory table with search/filter, handles scan & bulk modals */
-let allInventory = [];
-let allProducts  = [];
+/**
+ * inventory.js — Branch-aware inventory view with status and category filters.
+ *
+ * URL params accepted from dashboard:
+ *   ?shop_id=X        → pre-select branch
+ *   ?status=Available → pre-select status filter
+ *   ?status=Sold      → pre-select Sold filter
+ */
+'use strict';
+
+let _allInventory = [];   // raw items from API (all for selected branch)
+let _products     = [];   // flat products list for name lookups
+let _shops        = [];
+let _selectedShopId = null;
+let _statusFilter   = '';
+let _catFilter      = '';
+let _searchQ        = '';
 
 document.addEventListener('DOMContentLoaded', async () => {
-  await loadData();
-  setupSearch();
-  setupModals();
+  const { role, shopId } = getSession();
+
+  // Load metadata
+  try {
+    [_products, _shops] = await Promise.all([api.getProducts(), api.getShops()]);
+  } catch { /* non-critical */ }
+
+  // Admin: show branch selector
+  if (role === 'admin') {
+    renderBranchPills();
+    document.getElementById('branchSelectorRow').style.display = 'flex';
+  }
+
+  // Read URL params
+  const params = new URLSearchParams(window.location.search);
+  const urlShop   = params.get('shop_id');
+  const urlStatus = params.get('status');
+
+  if (urlStatus) _statusFilter = urlStatus;
+  if (urlShop)   _selectedShopId = parseInt(urlShop, 10);
+
+  // Sync status tab UI
+  if (_statusFilter) {
+    document.querySelectorAll('.status-tab').forEach(t =>
+      t.classList.toggle('active', t.dataset.status === _statusFilter));
+  }
+  // Sync branch pill UI
+  if (_selectedShopId) {
+    setTimeout(() => syncBranchPill(_selectedShopId), 50);
+  }
+
+  await loadInventory();
+  wireFilters();
 });
 
-async function loadData() {
-  try {
-    [allInventory, allProducts] = await Promise.all([api.getInventory(), api.getProducts()]);
-    renderTable(allInventory);
-    populateProductDropdowns();
-  } catch (err) {
-    showAlert('Failed to load inventory: ' + err.message, 'error');
+// ── Branch pills (admin) ──────────────────────────────────────────────────────
+function renderBranchPills() {
+  const container = document.getElementById('branchPills');
+  const all = document.createElement('button');
+  all.className = 'branch-pill' + (_selectedShopId ? '' : ' active');
+  all.textContent = 'All Branches';
+  all.dataset.shopId = '';
+  all.addEventListener('click', () => selectBranch(null));
+  container.appendChild(all);
+
+  _shops.forEach(s => {
+    const btn = document.createElement('button');
+    btn.className = 'branch-pill' + (s.id === _selectedShopId ? ' active' : '');
+    btn.textContent = s.name;
+    btn.dataset.shopId = s.id;
+    btn.addEventListener('click', () => selectBranch(s.id));
+    container.appendChild(btn);
+  });
+}
+
+function syncBranchPill(shopId) {
+  document.querySelectorAll('.branch-pill').forEach(p => {
+    p.classList.toggle('active', parseInt(p.dataset.shopId, 10) === shopId || (!shopId && !p.dataset.shopId));
+  });
+}
+
+async function selectBranch(shopId) {
+  _selectedShopId = shopId;
+  syncBranchPill(shopId);
+  // Update shop badge
+  const badge = document.getElementById('shopBadge');
+  if (badge) {
+    const shop = _shops.find(s => s.id === shopId);
+    badge.textContent = shop ? shop.name : (shopId ? `Branch #${shopId}` : 'All Branches');
   }
+  await loadInventory();
+}
+
+// ── Load inventory ────────────────────────────────────────────────────────────
+async function loadInventory() {
+  const { role, shopId } = getSession();
+  const tbody = document.getElementById('inventoryTbody');
+  tbody.innerHTML = '<tr><td colspan="9" class="table-empty"><i class="fa-solid fa-spinner fa-spin"></i> Loading&hellip;</td></tr>';
+
+  try {
+    const params = {};
+    if (_selectedShopId) params.shop_id = _selectedShopId;
+    _allInventory = await api.getInventory(params);
+    applyFilters();
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="9" class="table-empty">Error: ${err.message}</td></tr>`;
+  }
+}
+
+// ── Filter and render ─────────────────────────────────────────────────────────
+function applyFilters() {
+  let items = [..._allInventory];
+
+  // Status filter
+  if (_statusFilter) items = items.filter(i => i.status === _statusFilter);
+
+  // Category filter
+  if (_catFilter) {
+    items = items.filter(i => {
+      const p = _products.find(p => p.id === i.product_id);
+      return p && p.category === _catFilter;
+    });
+  }
+
+  // Search
+  if (_searchQ) {
+    items = items.filter(i => {
+      const p = _products.find(p => p.id === i.product_id);
+      const name = p ? `${p.brand} ${p.model}`.toLowerCase() : '';
+      return i.imei_number.toLowerCase().includes(_searchQ) || name.includes(_searchQ);
+    });
+  }
+
+  renderKPIs(items);
+  renderTable(items);
+}
+
+function renderKPIs(items) {
+  const avail = items.filter(i => i.status === 'Available').length;
+  const sold  = items.filter(i => i.status === 'Sold').length;
+  document.getElementById('kmiTotal').textContent = items.length.toLocaleString();
+  document.getElementById('kmiAvail').textContent = avail.toLocaleString();
+  document.getElementById('kmiSold').textContent  = sold.toLocaleString();
+
+  // Update table title
+  const statusLabel = _statusFilter ? ` — ${_statusFilter}` : '';
+  const catLabel    = _catFilter ? ` (${_catFilter === 'phone' ? 'Phones' : 'Accessories'})` : '';
+  document.getElementById('invTableTitle').textContent = `Inventory${statusLabel}${catLabel}`;
+  document.getElementById('invResultCount').textContent = `${items.length} item${items.length !== 1 ? 's' : ''}`;
 }
 
 function renderTable(items) {
   const tbody = document.getElementById('inventoryTbody');
   if (!items.length) {
-    tbody.innerHTML = '<tr><td colspan="6" class="table-empty">No inventory found.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" class="table-empty">No items match the current filter.</td></tr>';
     return;
   }
+
   tbody.innerHTML = items.map((item, idx) => {
-    const prod = allProducts.find(p => p.id === item.product_id);
+    const prod  = _products.find(p => p.id === item.product_id);
+    const brand = prod ? prod.brand : '—';
+    const model = prod ? prod.model : `Product #${item.product_id}`;
+    const cat   = prod ? prod.category : '—';
+    const shop  = _shops.find(s => s.id === item.shop_id);
+
     return `
       <tr>
         <td>${idx + 1}</td>
         <td class="mono">${item.imei_number}</td>
-        <td>${prod ? `${prod.brand} ${prod.model}` : `Product #${item.product_id}`}</td>
+        <td>${brand}</td>
+        <td>${model}</td>
+        <td>
+          <span class="badge badge-${cat === 'phone' ? 'mpesa' : 'card'}" style="font-size:.7rem">
+            ${cat === 'phone' ? '📱 Phone' : '🔌 Accessory'}
+          </span>
+        </td>
+        <td>${shop ? shop.name : `#${item.shop_id}`}</td>
         <td><span class="badge badge-${item.status.toLowerCase()}">${item.status}</span></td>
         <td>${fmtDateTime(item.date_added)}</td>
         <td>${item.date_sold ? fmtDateTime(item.date_sold) : '—'}</td>
@@ -38,88 +181,31 @@ function renderTable(items) {
   }).join('');
 }
 
-function setupSearch() {
-  const searchInput  = document.getElementById('inventorySearch');
-  const statusFilter = document.getElementById('statusFilter');
-
-  function applyFilters() {
-    const q      = searchInput.value.toLowerCase();
-    const status = statusFilter.value;
-    const filtered = allInventory.filter(item => {
-      const prod    = allProducts.find(p => p.id === item.product_id);
-      const prodStr = prod ? `${prod.brand} ${prod.model}`.toLowerCase() : '';
-      const matchQ  = !q || item.imei_number.toLowerCase().includes(q) || prodStr.includes(q);
-      const matchS  = !status || item.status === status;
-      return matchQ && matchS;
-    });
-    renderTable(filtered);
-  }
-
-  searchInput.addEventListener('input',  applyFilters);
-  statusFilter.addEventListener('change', applyFilters);
-}
-
-function populateProductDropdowns() {
-  ['scanProduct', 'accStockProduct'].forEach(id => {
-    const sel = document.getElementById(id);
-    if (!sel) return;
-    allProducts.forEach(p => {
-      const opt = document.createElement('option');
-      opt.value = p.id;
-      opt.textContent = `${p.brand} ${p.model}`;
-      sel.appendChild(opt);
+// ── Wire filter controls ──────────────────────────────────────────────────────
+function wireFilters() {
+  // Status tabs
+  document.querySelectorAll('.status-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.status-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      _statusFilter = tab.dataset.status;
+      applyFilters();
     });
   });
-}
 
-function setupModals() {
-  // Open modals
-  document.getElementById('openScanModal').addEventListener('click', () => {
-    document.getElementById('scanModal').classList.remove('hidden');
-  });
-  document.getElementById('openAccModal').addEventListener('click', () => {
-    document.getElementById('accModal').classList.remove('hidden');
-  });
-
-  // Scan form
-  document.getElementById('scanForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    hideError('scanError');
-    const imei      = document.getElementById('scanImei').value.trim();
-    const productId = document.getElementById('scanProduct').value;
-
-    if (imei.length !== 15) { showError('scanError', 'IMEI must be exactly 15 digits.'); return; }
-    if (!productId)          { showError('scanError', 'Please select a product.'); return; }
-
-    try {
-      await api.scanImei({ imei_number: imei, product_id: parseInt(productId) });
-      showAlert('✅ Item added to inventory!');
-      document.getElementById('scanModal').classList.add('hidden');
-      document.getElementById('scanForm').reset();
-      await loadData();
-    } catch (err) {
-      showError('scanError', err.message);
-    }
+  // Category pills
+  document.querySelectorAll('.cat-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      document.querySelectorAll('.cat-pill').forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      _catFilter = pill.dataset.cat;
+      applyFilters();
+    });
   });
 
-  // Bulk accessory form
-  document.getElementById('accStockForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    hideError('accStockError');
-    const productId = document.getElementById('accStockProduct').value;
-    const qty       = document.getElementById('accQty').value;
-
-    if (!productId) { showError('accStockError', 'Please select a product.'); return; }
-    if (!qty || qty < 1) { showError('accStockError', 'Quantity must be at least 1.'); return; }
-
-    try {
-      const result = await api.stockAccessory({ product_id: parseInt(productId), quantity: parseInt(qty) });
-      showAlert(`✅ ${result.detail}`);
-      document.getElementById('accModal').classList.add('hidden');
-      document.getElementById('accStockForm').reset();
-      await loadData();
-    } catch (err) {
-      showError('accStockError', err.message);
-    }
+  // Search
+  document.getElementById('inventorySearch').addEventListener('input', e => {
+    _searchQ = e.target.value.toLowerCase();
+    applyFilters();
   });
 }

@@ -9,7 +9,7 @@ from slowapi.errors import RateLimitExceeded
 from app.database import engine, Base
 from app.config import settings
 from app.auth import router as auth_router, limiter
-from app.routes import shops, products, inventory, sales, users
+from app.routes import shops, products, inventory, sales, users, dashboard, reports
 
 # ── Logging setup ─────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -51,6 +51,8 @@ app.include_router(users.router)
 app.include_router(products.router)
 app.include_router(inventory.router)
 app.include_router(sales.router)
+app.include_router(dashboard.router)
+app.include_router(reports.router)
 
 
 # ── Health check ──────────────────────────────────────────────────────────────

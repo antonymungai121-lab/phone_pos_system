@@ -35,6 +35,32 @@ function getSession() {
   if (usernameEl) usernameEl.textContent = username || '—';
   if (roleEl)     roleEl.textContent     = role || '—';
 
+  // ── Cashier: hide Products, Users, Branches nav items ──────────────────
+  if (role === 'cashier') {
+    document.querySelectorAll('[data-page="products"], [data-page="users"], [data-page="shops"]')
+      .forEach(el => el.style.display = 'none');
+
+    // If cashier lands on a restricted page, bounce them to dashboard
+    const restrictedPages = ['products.html', 'users.html', 'shops.html'];
+    if (restrictedPages.some(p => window.location.pathname.endsWith(p))) {
+      window.location.replace('dashboard.html');
+      return;
+    }
+  }
+
+  // ── Manager: hide Users and Branches nav items ──────────────────────────
+  if (role === 'manager') {
+    document.querySelectorAll('[data-page="users"], [data-page="shops"]')
+      .forEach(el => el.style.display = 'none');
+
+    // If manager lands on a restricted page, bounce them to dashboard
+    const managerRestricted = ['users.html', 'shops.html'];
+    if (managerRestricted.some(p => window.location.pathname.endsWith(p))) {
+      window.location.replace('dashboard.html');
+      return;
+    }
+  }
+
   try {
     const shops  = await api.getShops();
     const shop   = shops.find(s => s.id === shopId);

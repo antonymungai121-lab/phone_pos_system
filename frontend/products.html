@@ -4,11 +4,132 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PhonePOS &mdash; Products</title>
-  <meta name="description" content="Manage phone and accessory product catalogue." />
+  <meta name="description" content="Manage phone and accessory product catalogue with branch stock dashboard." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <style>
+    /* ── Products page specific ──────────────────────────────────────────── */
+    .prod-toolbar {
+      display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 22px;
+    }
+    .cat-tab {
+      padding: 7px 22px; border-radius: 999px; border: 1px solid var(--clr-border);
+      background: transparent; color: var(--txt-secondary); cursor: pointer; font-size: .82rem;
+      transition: all var(--t-fast) var(--ease);
+    }
+    .cat-tab.active, .cat-tab:hover {
+      background: var(--clr-primary); border-color: var(--clr-primary); color: #000;
+    }
+    .search-prod { max-width: 220px; }
+    .action-btns { display: flex; gap: 8px; margin-left: auto; flex-wrap: wrap; }
+
+    /* Product cards grid */
+    .products-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+      gap: 18px;
+    }
+    .product-card {
+      border-radius: var(--radius-md);
+      padding: 18px 20px;
+      display: flex; flex-direction: column; gap: 12px;
+    }
+    .product-card-header {
+      display: flex; align-items: center; gap: 12px;
+    }
+    .product-icon {
+      width: 44px; height: 44px; border-radius: var(--radius-sm);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem; flex-shrink: 0;
+    }
+    .product-icon.phone { background: rgba(56,189,248,.12); }
+    .product-icon.accessory { background: rgba(129,140,248,.12); }
+    .product-name { font-weight: 700; font-size: .97rem; }
+    .product-meta { font-size: .78rem; color: var(--txt-secondary); }
+    .product-price { font-size: .88rem; color: var(--clr-primary); font-weight: 600; }
+
+    /* Branch stock row inside each card */
+    .branch-stock-list { display: flex; flex-direction: column; gap: 6px; }
+    .branch-stock-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 6px 10px; border-radius: var(--radius-sm);
+      background: rgba(255,255,255,.03); font-size: .8rem;
+    }
+    .branch-stock-row .bsr-name { color: var(--txt-secondary); font-weight: 500; }
+    .bsr-counts { display: flex; gap: 8px; align-items: center; }
+    .bsr-badge {
+      padding: 2px 8px; border-radius: 999px; font-size: .72rem; font-weight: 600;
+    }
+    .bsr-avail   { background: rgba(52,211,153,.15); color: var(--clr-success); }
+    .bsr-sold    { background: rgba(248,113,113,.12); color: var(--clr-danger); }
+    .bsr-low     { background: rgba(251,191,36,.15);  color: var(--clr-warning);
+                   animation: pulse-low 1.5s ease-in-out infinite; }
+    .bsr-out     { background: rgba(248,113,113,.08); color: var(--txt-muted); border: 1px dashed rgba(248,113,113,.3); }
+    @keyframes pulse-low {
+      0%,100% { opacity: 1; } 50% { opacity: .55; }
+    }
+    .low-stock-alert {
+      display: flex; align-items: center; gap: 8px; padding: 7px 12px;
+      border-radius: var(--radius-sm); background: rgba(251,191,36,.1);
+      border: 1px solid rgba(251,191,36,.3); font-size: .78rem; color: var(--clr-warning);
+      margin-top: 4px;
+    }
+    .no-stock-row {
+      font-size: .78rem; color: var(--txt-muted); text-align: center; padding: 4px;
+    }
+
+    /* Step wizard inside modals */
+    .wizard-steps {
+      display: flex; gap: 0; margin-bottom: 20px; border-radius: var(--radius-sm); overflow: hidden;
+    }
+    .wizard-step {
+      flex: 1; padding: 8px 4px; text-align: center; font-size: .75rem;
+      color: var(--txt-muted); background: rgba(255,255,255,.03);
+      border-right: 1px solid var(--clr-border); position: relative;
+    }
+    .wizard-step:last-child { border-right: none; }
+    .wizard-step.active { background: rgba(56,189,248,.1); color: var(--clr-primary); font-weight: 600; }
+    .wizard-step.done   { background: rgba(52,211,153,.08); color: var(--clr-success); }
+
+    .type-btn-row { display: flex; gap: 10px; }
+    .type-btn {
+      flex: 1; padding: 18px 10px; border-radius: var(--radius-md); border: 1px solid var(--clr-border);
+      background: transparent; color: var(--txt-primary); cursor: pointer; font-size: .9rem;
+      text-align: center; transition: all var(--t-fast) var(--ease); display: flex;
+      flex-direction: column; align-items: center; gap: 8px;
+    }
+    .type-btn i { font-size: 2rem; }
+    .type-btn:hover, .type-btn.selected {
+      border-color: var(--clr-primary); background: rgba(56,189,248,.08); color: var(--clr-primary);
+    }
+    .back-link {
+      display: inline-flex; align-items: center; gap: 6px; font-size: .82rem;
+      color: var(--txt-muted); cursor: pointer; margin-bottom: 14px;
+      transition: color var(--t-fast);
+    }
+    .back-link:hover { color: var(--clr-primary); }
+    .modal-box.wide { max-width: 540px; }
+    .modal-box.extra-wide { max-width: 680px; }
+    .acc-type-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px;
+    }
+    .acc-type-btn {
+      padding: 10px 6px; border-radius: var(--radius-sm); border: 1px solid var(--clr-border);
+      background: transparent; color: var(--txt-secondary); cursor: pointer; font-size: .78rem;
+      text-align: center; transition: all var(--t-fast) var(--ease);
+    }
+    .acc-type-btn:hover, .acc-type-btn.selected {
+      border-color: var(--clr-accent); background: rgba(129,140,248,.1); color: var(--clr-accent);
+    }
+
+    /* Product card action bar */
+    .product-actions {
+      display: flex; gap: 8px; padding-top: 10px;
+      border-top: 1px solid var(--border);
+    }
+  </style>
 </head>
 <body class="app-page">
 
@@ -45,55 +166,313 @@
         <span class="shop-badge" id="shopBadge">&mdash;</span>
       </div>
       <div class="topbar-right">
-        <button id="openAddProductModal" class="btn btn-primary btn-sm">
-          <i class="fa-solid fa-plus"></i> Add Product
-        </button>
+        <span id="topbarTime" class="topbar-time"></span>
       </div>
     </header>
 
-    <div class="card glass">
-      <div class="card-header">
-        <h2 class="card-title">Product Catalogue</h2>
-        <input type="search" id="productSearch" placeholder="Search products&hellip;" style="max-width:220px" />
+    <!-- Toolbar: Category tabs + Search + Action buttons -->
+    <div class="prod-toolbar">
+      <button class="cat-tab active" data-cat="all">All</button>
+      <button class="cat-tab" data-cat="phone"><i class="fa-solid fa-mobile-screen-button"></i> Phones</button>
+      <button class="cat-tab" data-cat="accessory"><i class="fa-solid fa-plug"></i> Accessories</button>
+      <input type="search" class="search-prod" id="productSearch" placeholder="Search products&hellip;" />
+      <div class="action-btns">
+        <button class="btn btn-outline btn-sm" id="openStockModal">
+          <i class="fa-solid fa-boxes-stacked"></i> Add Stock
+        </button>
+        <button class="btn btn-primary btn-sm" id="openAddCategoryModal">
+          <i class="fa-solid fa-plus"></i> Add Category
+        </button>
+        <!-- Admin only -->
+        <button class="btn btn-ghost btn-sm admin-only" id="openTransferModal" style="display:none">
+          <i class="fa-solid fa-right-left"></i> Transfer Stock
+        </button>
       </div>
-      <div class="table-wrap">
-        <table class="data-table" id="productsTable">
-          <thead>
-            <tr><th>#</th><th>Brand</th><th>Model</th><th>Price (KES)</th><th>Actions</th></tr>
-          </thead>
-          <tbody id="productsTbody">
-            <tr><td colspan="5" class="table-empty">Loading&hellip;</td></tr>
-          </tbody>
-        </table>
-      </div>
+    </div>
+
+    <!-- Product cards grid -->
+    <div id="productsGrid" class="products-grid">
+      <p style="color:var(--txt-muted);text-align:center;padding:40px;grid-column:1/-1">
+        <i class="fa-solid fa-spinner fa-spin"></i> Loading products&hellip;
+      </p>
     </div>
   </main>
 
-  <!-- Add/Edit Product Modal -->
-  <div id="addProductModal" class="modal-overlay hidden" role="dialog">
-    <div class="modal-box glass">
+  <!-- ══ ADD CATEGORY MODAL ═══════════════════════════════════════════════════ -->
+  <div id="addCategoryModal" class="modal-overlay hidden" role="dialog">
+    <div class="modal-box glass wide">
       <div class="modal-header">
-        <h3 id="productModalTitle">Add Product</h3>
-        <button class="modal-close" data-close="addProductModal"><i class="fa-solid fa-xmark"></i></button>
+        <h3 id="catModalTitle">Add Category</h3>
+        <button class="modal-close" data-close="addCategoryModal"><i class="fa-solid fa-xmark"></i></button>
       </div>
-      <form id="addProductForm" class="pos-form">
-        <input type="hidden" id="editProductId" value="" />
+
+      <!-- Step 1: choose type -->
+      <div id="catStep1">
+        <p style="font-size:.85rem;color:var(--txt-secondary);margin-bottom:16px">Select the type of product to add:</p>
+        <div class="type-btn-row">
+          <button class="type-btn" id="choosePhonesBtn">
+            <i class="fa-solid fa-mobile-screen-button"></i>
+            Phone
+          </button>
+          <button class="type-btn" id="chooseAccessoryBtn">
+            <i class="fa-solid fa-plug"></i>
+            Accessory
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 2a: Phone form -->
+      <div id="catStep2Phone" class="hidden">
+        <span class="back-link" id="backFromPhone"><i class="fa-solid fa-arrow-left"></i> Back</span>
+        <form id="addPhoneForm" class="pos-form">
+          <div class="form-group">
+            <label>Brand</label>
+            <input type="text" id="phoneBrand" placeholder="e.g. Samsung" required />
+          </div>
+          <div class="form-group">
+            <label>Model</label>
+            <input type="text" id="phoneModel" placeholder="e.g. Galaxy A55" required />
+          </div>
+          <div class="form-group">
+            <label>Selling Price (KES)</label>
+            <input type="number" id="phonePrice" placeholder="e.g. 35000" min="1" step="0.01" required />
+          </div>
+          <div id="phoneFormError" class="alert alert-error hidden"></div>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-ghost" data-close="addCategoryModal">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Phone Model</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Step 2b: Accessory form -->
+      <div id="catStep2Accessory" class="hidden">
+        <span class="back-link" id="backFromAccessory"><i class="fa-solid fa-arrow-left"></i> Back</span>
+        <form id="addAccessoryForm" class="pos-form">
+          <div class="form-group">
+            <label>Accessory Type</label>
+            <div class="acc-type-grid" id="accTypeGrid">
+              <button type="button" class="acc-type-btn" data-type="charger"><i class="fa-solid fa-bolt"></i><br>Charger</button>
+              <button type="button" class="acc-type-btn" data-type="earphone"><i class="fa-solid fa-headphones"></i><br>Earphone</button>
+              <button type="button" class="acc-type-btn" data-type="earpod"><i class="fa-solid fa-ear-listen"></i><br>Earpod</button>
+              <button type="button" class="acc-type-btn" data-type="back_cover"><i class="fa-solid fa-shield-halved"></i><br>Back Cover</button>
+              <button type="button" class="acc-type-btn" data-type="screen_protector"><i class="fa-regular fa-window-maximize"></i><br>Screen Guard</button>
+              <button type="button" class="acc-type-btn" data-type="other"><i class="fa-solid fa-ellipsis"></i><br>Other</button>
+            </div>
+            <input type="hidden" id="accType" required />
+          </div>
+          <div class="form-group">
+            <label>Brand</label>
+            <input type="text" id="accBrand" placeholder="e.g. Baseus" required />
+          </div>
+          <div class="form-group">
+            <label>Model / Name</label>
+            <input type="text" id="accModel" placeholder="e.g. 65W GaN Charger" required />
+          </div>
+          <div class="form-group">
+            <label>Selling Price (KES)</label>
+            <input type="number" id="accPrice" placeholder="e.g. 1500" min="1" step="0.01" required />
+          </div>
+          <div id="accFormError" class="alert alert-error hidden"></div>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-ghost" data-close="addCategoryModal">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Accessory</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ ADD STOCK MODAL ═══════════════════════════════════════════════════════ -->
+  <div id="addStockModal" class="modal-overlay hidden" role="dialog">
+    <div class="modal-box glass extra-wide">
+      <div class="modal-header">
+        <h3>Add Stock to Branch</h3>
+        <button class="modal-close" data-close="addStockModal"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <!-- Step 1: choose branch -->
+      <div id="stockStep1">
+        <p style="font-size:.85rem;color:var(--txt-secondary);margin-bottom:14px">Select branch to stock:</p>
+        <div id="branchButtonsContainer" class="type-btn-row" style="flex-wrap:wrap;gap:10px"></div>
+      </div>
+
+      <!-- Step 2: choose type -->
+      <div id="stockStep2" class="hidden">
+        <span class="back-link" id="backFromStockType"><i class="fa-solid fa-arrow-left"></i> Back</span>
+        <p style="font-size:.85rem;color:var(--txt-secondary);margin-bottom:14px">
+          Branch: <strong id="selectedBranchLabel"></strong>. Select product type:
+        </p>
+        <div class="type-btn-row">
+          <button class="type-btn" id="stockChoosePhone">
+            <i class="fa-solid fa-mobile-screen-button"></i> Phone (by IMEI)
+          </button>
+          <button class="type-btn" id="stockChooseAccessory">
+            <i class="fa-solid fa-plug"></i> Accessory (bulk qty)
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 3a: scan IMEI -->
+      <div id="stockStep3Phone" class="hidden">
+        <span class="back-link" id="backFromIMEI"><i class="fa-solid fa-arrow-left"></i> Back</span>
+        <form id="stockPhoneForm" class="pos-form">
+          <div class="form-group">
+            <label>Select Brand</label>
+            <select id="stockPhoneBrand" required>
+              <option value="">— select brand —</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Select Model</label>
+            <select id="stockPhoneModel" required>
+              <option value="">— select model —</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>IMEI Number</label>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input type="text" id="stockImei" placeholder="Scan or type 15-digit IMEI" maxlength="15" required style="flex:1" />
+              <button type="button" class="btn btn-ghost btn-sm" id="scanBarcodeBtn" title="Scan barcode">
+                <i class="fa-solid fa-barcode"></i>
+              </button>
+            </div>
+          </div>
+          <div id="stockPhoneError" class="alert alert-error hidden"></div>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-ghost" data-close="addStockModal">Cancel</button>
+            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Add to Inventory</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Step 3b: bulk accessory -->
+      <div id="stockStep3Accessory" class="hidden">
+        <span class="back-link" id="backFromAccStock"><i class="fa-solid fa-arrow-left"></i> Back</span>
+        <form id="stockAccessoryForm" class="pos-form">
+          <div class="form-group">
+            <label>Select Brand</label>
+            <select id="stockAccBrand" required>
+              <option value="">— select brand —</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Select Model</label>
+            <select id="stockAccModel" required>
+              <option value="">— select model —</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Quantity to Add</label>
+            <input type="number" id="stockAccQty" placeholder="e.g. 20" min="1" max="500" required />
+          </div>
+          <div id="stockAccError" class="alert alert-error hidden"></div>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-ghost" data-close="addStockModal">Cancel</button>
+            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-boxes-stacked"></i> Add Stock</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ TRANSFER STOCK MODAL (admin only) ════════════════════════════════════ -->
+  <div id="transferModal" class="modal-overlay hidden" role="dialog">
+    <div class="modal-box glass extra-wide">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-right-left"></i> Transfer Stock Between Branches</h3>
+        <button class="modal-close" data-close="transferModal"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="transferForm" class="pos-form">
         <div class="form-group">
-          <label for="productBrand">Brand</label>
-          <input type="text" id="productBrand" placeholder="e.g. Samsung" required />
+          <label>Source Branch</label>
+          <select id="transferFromShop" required>
+            <option value="">— select source branch —</option>
+          </select>
         </div>
         <div class="form-group">
-          <label for="productModel">Model</label>
-          <input type="text" id="productModel" placeholder="e.g. Galaxy A55" required />
+          <label>Select Item (IMEI / Serial)</label>
+          <select id="transferItem" required>
+            <option value="">— select source branch first —</option>
+          </select>
         </div>
         <div class="form-group">
-          <label for="productPrice">Selling Price (KES)</label>
-          <input type="number" id="productPrice" placeholder="e.g. 35000" min="1" step="0.01" required />
+          <label>Destination Branch</label>
+          <select id="transferToShop" required>
+            <option value="">— select destination branch —</option>
+          </select>
         </div>
-        <div id="productError" class="alert alert-error hidden"></div>
+        <div id="transferError" class="alert alert-error hidden"></div>
         <div class="modal-actions">
-          <button type="button" class="btn btn-ghost" data-close="addProductModal">Cancel</button>
-          <button type="submit" class="btn btn-primary" id="productSubmitBtn">Add Product</button>
+          <button type="button" class="btn btn-ghost" data-close="transferModal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="fa-solid fa-right-left"></i> Transfer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ══ EDIT PRODUCT MODAL ══════════════════════════════════════════════════ -->
+  <div id="editProductModal" class="modal-overlay hidden" role="dialog" aria-labelledby="editProdTitle">
+    <div class="modal-box glass wide">
+      <div class="modal-header">
+        <h3 id="editProdTitle"><i class="fa-solid fa-pen-to-square"></i> Edit Product</h3>
+        <button class="modal-close" data-close="editProductModal"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="editProductForm" class="pos-form">
+        <input type="hidden" id="editProductId" />
+
+        <!-- Category selector -->
+        <div class="form-group">
+          <label>Category</label>
+          <div class="type-btn-row" id="editCatRow">
+            <button type="button" class="type-btn" id="editCatPhone" data-cat="phone">
+              <i class="fa-solid fa-mobile-screen-button"></i> Phone
+            </button>
+            <button type="button" class="type-btn" id="editCatAccessory" data-cat="accessory">
+              <i class="fa-solid fa-plug"></i> Accessory
+            </button>
+          </div>
+          <input type="hidden" id="editCategory" required />
+        </div>
+
+        <!-- Accessory type (shown only when category = accessory) -->
+        <div class="form-group hidden" id="editAccTypeGroup">
+          <label>Accessory Type</label>
+          <div class="acc-type-grid">
+            <button type="button" class="acc-type-btn" data-type="charger"><i class="fa-solid fa-bolt"></i><br>Charger</button>
+            <button type="button" class="acc-type-btn" data-type="earphone"><i class="fa-solid fa-headphones"></i><br>Earphone</button>
+            <button type="button" class="acc-type-btn" data-type="earpod"><i class="fa-solid fa-ear-listen"></i><br>Earpod</button>
+            <button type="button" class="acc-type-btn" data-type="back_cover"><i class="fa-solid fa-shield-halved"></i><br>Back Cover</button>
+            <button type="button" class="acc-type-btn" data-type="screen_protector"><i class="fa-regular fa-window-maximize"></i><br>Screen Guard</button>
+            <button type="button" class="acc-type-btn" data-type="other"><i class="fa-solid fa-ellipsis"></i><br>Other</button>
+          </div>
+          <input type="hidden" id="editAccType" />
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="editBrand">Brand</label>
+            <input type="text" id="editBrand" placeholder="e.g. Samsung" required />
+          </div>
+          <div class="form-group">
+            <label for="editModel">Model / Name</label>
+            <input type="text" id="editModel" placeholder="e.g. Galaxy A55" required />
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="editPrice">Selling Price (KES)</label>
+          <div class="input-wrap">
+            <span class="input-icon">KES</span>
+            <input type="number" id="editPrice" placeholder="e.g. 35000" min="1" step="0.01" required />
+          </div>
+        </div>
+
+        <div id="editProductError"   class="alert alert-error   hidden"></div>
+        <div id="editProductSuccess" class="alert alert-success hidden"></div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" data-close="editProductModal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Save Changes</button>
         </div>
       </form>
     </div>

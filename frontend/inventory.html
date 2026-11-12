@@ -4,11 +4,55 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PhonePOS &mdash; Inventory</title>
-  <meta name="description" content="View and manage phone inventory by IMEI and status." />
+  <meta name="description" content="Branch inventory: Available, Sold, and Out-of-Stock items." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <style>
+    .inv-toolbar {
+      display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 18px;
+    }
+    .branch-pill {
+      padding: 6px 18px; border-radius: 999px; border: 1px solid var(--clr-border);
+      background: transparent; color: var(--txt-secondary); cursor: pointer; font-size: .82rem;
+      transition: all var(--t-fast) var(--ease);
+    }
+    .branch-pill.active, .branch-pill:hover {
+      background: var(--clr-primary); border-color: var(--clr-primary); color: #000;
+    }
+    .status-tab {
+      padding: 6px 16px; border-radius: 999px; border: 1px solid var(--clr-border);
+      background: transparent; color: var(--txt-secondary); cursor: pointer; font-size: .82rem;
+      transition: all var(--t-fast) var(--ease);
+    }
+    .status-tab.active { font-weight: 600; }
+    .status-tab[data-status="Available"].active { background:rgba(52,211,153,.15); border-color:var(--clr-success); color:var(--clr-success); }
+    .status-tab[data-status="Sold"].active      { background:rgba(248,113,113,.12); border-color:var(--clr-danger);  color:var(--clr-danger); }
+    .status-tab[data-status=""].active          { background:rgba(56,189,248,.1);   border-color:var(--clr-primary); color:var(--clr-primary); }
+    .cat-filter-row { display: flex; gap: 8px; align-items: center; }
+    .cat-pill {
+      padding: 5px 14px; border-radius: 999px; border: 1px solid var(--clr-border);
+      background: transparent; color: var(--txt-muted); cursor: pointer; font-size: .78rem;
+      transition: all var(--t-fast) var(--ease);
+    }
+    .cat-pill.active, .cat-pill:hover {
+      background: rgba(129,140,248,.1); border-color: var(--clr-accent); color: var(--clr-accent);
+    }
+    .kpi-mini-row {
+      display: flex; gap: 12px; margin-bottom: 18px; flex-wrap: wrap;
+    }
+    .kpi-mini {
+      flex: 1; min-width: 130px; padding: 14px 16px; border-radius: var(--radius-md);
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .kpi-mini .km-val { font-size: 1.5rem; font-weight: 800; }
+    .kpi-mini .km-lbl { font-size: .75rem; color: var(--txt-secondary); text-transform: uppercase; letter-spacing: .07em; }
+    .kpi-mini.avail { border-left: 3px solid var(--clr-success); }
+    .kpi-mini.sold  { border-left: 3px solid var(--clr-danger); }
+    .kpi-mini.total { border-left: 3px solid var(--clr-primary); }
+    .search-inv { max-width: 220px; }
+  </style>
 </head>
 <body class="app-page">
 
@@ -45,90 +89,80 @@
         <span class="shop-badge" id="shopBadge">&mdash;</span>
       </div>
       <div class="topbar-right">
-        <input type="search" id="inventorySearch" placeholder="Search IMEI or product&hellip;" style="max-width:240px" />
-        <button id="openScanModal" class="btn btn-primary btn-sm">
-          <i class="fa-solid fa-barcode"></i> Scan IMEI
-        </button>
-        <button id="openStockModal" class="btn btn-outline btn-sm">
-          <i class="fa-solid fa-plus"></i> Stock Accessory
-        </button>
+        <span id="topbarTime" class="topbar-time"></span>
       </div>
     </header>
 
+    <!-- Branch selector (admin only — visible per role) -->
+    <div class="inv-toolbar" id="branchSelectorRow" style="display:none">
+      <span style="font-size:.82rem;color:var(--txt-muted)">Branch:</span>
+      <div id="branchPills"></div>
+    </div>
+
+    <!-- Mini KPIs -->
+    <div class="kpi-mini-row">
+      <div class="kpi-mini glass total">
+        <span class="km-val" id="kmiTotal">—</span>
+        <span class="km-lbl">Total Items</span>
+      </div>
+      <div class="kpi-mini glass avail">
+        <span class="km-val" id="kmiAvail">—</span>
+        <span class="km-lbl">Available</span>
+      </div>
+      <div class="kpi-mini glass sold">
+        <span class="km-val" id="kmiSold">—</span>
+        <span class="km-lbl">Sold</span>
+      </div>
+    </div>
+
+    <!-- Filter bar -->
+    <div class="inv-toolbar">
+      <!-- Status filter -->
+      <button class="status-tab active" data-status="">All Status</button>
+      <button class="status-tab" data-status="Available"><i class="fa-solid fa-circle-check"></i> Available</button>
+      <button class="status-tab" data-status="Sold"><i class="fa-solid fa-cart-flatbed"></i> Sold</button>
+
+      <span style="width:1px;height:20px;background:var(--clr-border);margin:0 4px"></span>
+
+      <!-- Category filter -->
+      <div class="cat-filter-row">
+        <button class="cat-pill active" data-cat="">All</button>
+        <button class="cat-pill" data-cat="phone"><i class="fa-solid fa-mobile-screen-button"></i> Phones</button>
+        <button class="cat-pill" data-cat="accessory"><i class="fa-solid fa-plug"></i> Accessories</button>
+      </div>
+
+      <!-- Search -->
+      <input type="search" class="search-inv" id="inventorySearch" placeholder="Search IMEI or product&hellip;" style="margin-left:auto" />
+    </div>
+
+    <!-- Inventory table -->
     <div class="card glass">
+      <div class="card-header">
+        <h2 class="card-title" id="invTableTitle">Inventory</h2>
+        <span style="font-size:.8rem;color:var(--txt-muted)" id="invResultCount"></span>
+      </div>
       <div class="table-wrap">
-        <table class="data-table" id="inventoryTable">
+        <table class="data-table">
           <thead>
             <tr>
               <th>#</th>
               <th>IMEI / Serial</th>
-              <th>Product</th>
+              <th>Brand</th>
+              <th>Model</th>
+              <th>Category</th>
+              <th>Branch</th>
               <th>Status</th>
               <th>Date Added</th>
               <th>Date Sold</th>
             </tr>
           </thead>
           <tbody id="inventoryTbody">
-            <tr><td colspan="6" class="table-empty">Loading&hellip;</td></tr>
+            <tr><td colspan="9" class="table-empty">Loading&hellip;</td></tr>
           </tbody>
         </table>
       </div>
     </div>
   </main>
-
-  <!-- Scan IMEI Modal -->
-  <div id="scanModal" class="modal-overlay hidden" role="dialog">
-    <div class="modal-box glass">
-      <div class="modal-header">
-        <h3>Scan / Add IMEI</h3>
-        <button class="modal-close" data-close="scanModal"><i class="fa-solid fa-xmark"></i></button>
-      </div>
-      <form id="scanForm" class="pos-form">
-        <div class="form-group">
-          <label for="scanImei">IMEI Number</label>
-          <input type="text" id="scanImei" placeholder="15-digit IMEI" maxlength="15" pattern="\d15" required />
-        </div>
-        <div class="form-group">
-          <label for="scanProduct">Product</label>
-          <select id="scanProduct" required>
-            <option value="">— select product —</option>
-          </select>
-        </div>
-        <div id="scanError" class="alert alert-error hidden"></div>
-        <div class="modal-actions">
-          <button type="button" class="btn btn-ghost" data-close="scanModal">Cancel</button>
-          <button type="submit" class="btn btn-primary">Add to Inventory</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- Stock Accessory Modal -->
-  <div id="stockModal" class="modal-overlay hidden" role="dialog">
-    <div class="modal-box glass">
-      <div class="modal-header">
-        <h3>Stock Accessory Units</h3>
-        <button class="modal-close" data-close="stockModal"><i class="fa-solid fa-xmark"></i></button>
-      </div>
-      <form id="stockForm" class="pos-form">
-        <div class="form-group">
-          <label for="stockProduct">Accessory Product</label>
-          <select id="stockProduct" required>
-            <option value="">— select accessory —</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="stockQty">Quantity</label>
-          <input type="number" id="stockQty" placeholder="e.g. 10" min="1" max="500" required />
-        </div>
-        <div id="stockError" class="alert alert-error hidden"></div>
-        <div class="modal-actions">
-          <button type="button" class="btn btn-ghost" data-close="stockModal">Cancel</button>
-          <button type="submit" class="btn btn-primary">Add Stock</button>
-        </div>
-      </form>
-    </div>
-  </div>
 
   <script src="js/api.js"></script>
   <script src="js/app.js"></script>

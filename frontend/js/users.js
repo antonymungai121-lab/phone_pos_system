@@ -1,11 +1,19 @@
 /**
  * users.js — Admin user management page.
- * Features: user card grid, searchable table, add user modal,
- *           My Account modal with change-password.
+ * Features:
+ *  - User card grid + searchable table
+ *  - Create new user (admin only)
+ *  - Admin can reset any other user's password
+ *  - Admin can delete any other user
+ *  - My Account modal — change own password
+ *  - Password visibility toggles (re-wired each time a modal opens)
  */
 
 let allUsers = [];
 let allShops = [];
+
+// Target user ID for reset-password modal
+let _resetTargetId = null;
 
 const ROLE_HINTS = {
   cashier: '<strong>Cashier</strong> — Can process sales and view inventory.',
@@ -16,7 +24,7 @@ const ROLE_HINTS = {
 document.addEventListener('DOMContentLoaded', async () => {
   const { role, username, shopId } = getSession();
 
-  // Only admins may access this page
+  // Only admins may access this page (belt-and-suspenders; app.js also redirects)
   if (role !== 'admin') {
     showAlert('Access denied. Admins only.', 'error');
     setTimeout(() => window.location.replace('dashboard.html'), 1500);
@@ -31,7 +39,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadAll();
   setupSearch();
   setupModals();
-  setupPasswordToggles();
 });
 
 // ── Data loading ──────────────────────────────────────────────────────────────
@@ -105,6 +112,14 @@ function renderTable(users) {
     const shop = allShops.find(s => s.id === u.shop_id);
     const shopName = shop ? shop.name : `Shop #${u.shop_id}`;
     const isMe = u.username === me;
+
+    const actions = isMe
+      // For the logged-in admin: only own-password button (via My Account)
+      ? `<button class="btn-action" onclick="openMyAccount()">🔑 My Password</button>`
+      // For other users: Reset Pwd + Delete
+      : `<button class="btn-action" onclick="openResetPwd(${u.id},'${u.username}')">🔑 Reset Pwd</button>
+         <button class="btn-action btn-action-danger" onclick="confirmDeleteUser(${u.id},'${u.username}')">🗑 Delete</button>`;
+
     return `
       <tr ${isMe ? 'class="current-user-row"' : ''}>
         <td>${i + 1}</td>
@@ -114,12 +129,7 @@ function renderTable(users) {
         </td>
         <td><span class="badge badge-role-${u.role}">${u.role}</span></td>
         <td>${shopName}</td>
-        <td>
-          ${isMe
-            ? `<button class="btn-action" onclick="openMyAccount()">🔑 Password</button>`
-            : `<span class="txt-muted" style="font-size:.8rem">—</span>`
-          }
-        </td>
+        <td style="display:flex;gap:6px;flex-wrap:wrap">${actions}</td>
       </tr>`;
   }).join('');
 }
@@ -132,28 +142,78 @@ function setupSearch() {
   });
 }
 
+// ── Helper: attach pwd-toggle handlers inside a container ─────────────────────
+function wirePwdToggles(container) {
+  container.querySelectorAll('.pwd-toggle').forEach(btn => {
+    // Clone to remove any old listeners
+    const fresh = btn.cloneNode(true);
+    btn.parentNode.replaceChild(fresh, btn);
+    fresh.addEventListener('click', () => {
+      const t = document.getElementById(fresh.dataset.target);
+      if (!t) return;
+      const show = t.type === 'password';
+      t.type = show ? 'text' : 'password';
+      fresh.innerHTML = show
+        ? '<i class="fa-regular fa-eye-slash"></i>'
+        : '<i class="fa-regular fa-eye"></i>';
+    });
+  });
+}
+
 // ── Modals ────────────────────────────────────────────────────────────────────
 function openMyAccount() {
-  document.getElementById('myAccountModal').classList.remove('hidden');
+  const m = document.getElementById('myAccountModal');
+  m.classList.remove('hidden');
+  document.getElementById('pwdChangeError').classList.add('hidden');
+  document.getElementById('pwdChangeSuccess').classList.add('hidden');
+  document.getElementById('changePasswordForm').reset();
+  wirePwdToggles(m);
 }
 window.openMyAccount = openMyAccount;
 
+function openResetPwd(userId, username) {
+  _resetTargetId = userId;
+  document.getElementById('resetPwdTarget').textContent =
+    `Resetting password for: ${username}`;
+  document.getElementById('resetPwdError').classList.add('hidden');
+  document.getElementById('resetPwdSuccess').classList.add('hidden');
+  document.getElementById('resetPwdForm').reset();
+  const m = document.getElementById('resetPwdModal');
+  m.classList.remove('hidden');
+  wirePwdToggles(m);
+}
+window.openResetPwd = openResetPwd;
+
+async function confirmDeleteUser(userId, username) {
+  if (!confirm(`Delete user "${username}"? This cannot be undone.`)) return;
+  try {
+    await api.deleteUser(userId);
+    showAlert(`User "${username}" deleted.`, 'success');
+    await loadAll();
+  } catch (err) {
+    showAlert('Delete failed: ' + err.message, 'error');
+  }
+}
+window.confirmDeleteUser = confirmDeleteUser;
+
 function setupModals() {
-  // Open modals
+  // ── Open Add User modal ───────────────────────────────────────────────────
   document.getElementById('openAddUserModal').addEventListener('click', () => {
     hideError('addUserError');
     document.getElementById('addUserForm').reset();
-    document.getElementById('addUserModal').classList.remove('hidden');
+    const m = document.getElementById('addUserModal');
+    m.classList.remove('hidden');
+    wirePwdToggles(m);
   });
 
   document.getElementById('openMyAccountModal').addEventListener('click', openMyAccount);
 
-  // Role hint update
+  // Role hint
   document.getElementById('newRole').addEventListener('change', e => {
     document.getElementById('roleHint').innerHTML = ROLE_HINTS[e.target.value] || '';
   });
 
-  // ── Add User form ─────────────────────────────────────────────────────────
+  // ── Add User form submit ──────────────────────────────────────────────────
   document.getElementById('addUserForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     hideError('addUserError');
@@ -182,7 +242,41 @@ function setupModals() {
     }
   });
 
-  // ── Change Password form ──────────────────────────────────────────────────
+  // ── Reset Password form submit (admin resets other user's password) ────────
+  document.getElementById('resetPwdForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    hideError('resetPwdError');
+    document.getElementById('resetPwdSuccess').classList.add('hidden');
+
+    const newPwd     = document.getElementById('resetNewPwd').value;
+    const confirmPwd = document.getElementById('resetConfirmPwd').value;
+
+    if (newPwd !== confirmPwd) {
+      showError('resetPwdError', 'Passwords do not match.'); return;
+    }
+    if (newPwd.length < 8) {
+      showError('resetPwdError', 'Minimum 8 characters required.'); return;
+    }
+
+    const btn = e.target.querySelector('[type=submit]');
+    btn.disabled = true; btn.textContent = 'Resetting…';
+
+    try {
+      const res = await api.adminResetPassword(_resetTargetId, { new_password: newPwd });
+      const ok = document.getElementById('resetPwdSuccess');
+      ok.textContent = '✅ ' + res.message;
+      ok.classList.remove('hidden');
+      document.getElementById('resetPwdForm').reset();
+      showAlert(res.message);
+      setTimeout(() => document.getElementById('resetPwdModal').classList.add('hidden'), 2000);
+    } catch (err) {
+      showError('resetPwdError', err.message);
+    } finally {
+      btn.disabled = false; btn.textContent = '🔑 Reset Password';
+    }
+  });
+
+  // ── Change Own Password form submit ───────────────────────────────────────
   document.getElementById('changePasswordForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     hideError('pwdChangeError');
@@ -218,17 +312,5 @@ function setupModals() {
     } finally {
       btn.disabled = false; btn.textContent = 'Update Password';
     }
-  });
-}
-
-// ── Password visibility toggles ───────────────────────────────────────────────
-function setupPasswordToggles() {
-  document.querySelectorAll('.pwd-toggle').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const target = document.getElementById(btn.dataset.target);
-      const isText = target.type === 'text';
-      target.type = isText ? 'password' : 'text';
-      btn.innerHTML = isText ? '<i class="fa-regular fa-eye"></i>' : '<i class="fa-regular fa-eye-slash"></i>';
-    });
   });
 }

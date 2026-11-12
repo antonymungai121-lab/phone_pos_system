@@ -155,6 +155,40 @@
     </div>
   </div>
 
+  <!-- ── Admin Reset Password Modal ─────────────────────────────────────── -->
+  <div id="resetPwdModal" class="modal-overlay hidden" role="dialog" aria-labelledby="resetPwdTitle">
+    <div class="modal-box glass" style="max-width:420px">
+      <div class="modal-header">
+        <h3 id="resetPwdTitle"><i class="fa-solid fa-key"></i> Reset Password</h3>
+        <button class="modal-close" data-close="resetPwdModal"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <p id="resetPwdTarget" style="color:var(--txt-muted);font-size:.9rem;margin-bottom:16px"></p>
+      <form id="resetPwdForm" class="pos-form">
+        <div class="form-group">
+          <label for="resetNewPwd">New Password</label>
+          <div class="input-wrap">
+            <span class="input-icon"><i class="fa-solid fa-lock"></i></span>
+            <input type="password" id="resetNewPwd" minlength="8" placeholder="Min. 8 characters" required />
+            <button type="button" class="pwd-toggle" data-target="resetNewPwd"><i class="fa-regular fa-eye"></i></button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="resetConfirmPwd">Confirm Password</label>
+          <div class="input-wrap">
+            <span class="input-icon"><i class="fa-solid fa-check"></i></span>
+            <input type="password" id="resetConfirmPwd" minlength="8" placeholder="Re-enter new password" required />
+          </div>
+        </div>
+        <div id="resetPwdError"   class="alert alert-error   hidden"></div>
+        <div id="resetPwdSuccess" class="alert alert-success hidden"></div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" data-close="resetPwdModal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="fa-solid fa-key"></i> Reset Password</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- ── My Account / Change Password Modal ────────────────────────────── -->
   <div id="myAccountModal" class="modal-overlay hidden" role="dialog" aria-labelledby="myAccountTitle">
     <div class="modal-box glass">

@@ -541,6 +541,7 @@ img { display: block; max-width: 100%; }
 .badge-cash      { background: rgba(52,211,153,.12); color: var(--clr-cash);    border: 1px solid rgba(52,211,153,.25); }
 .badge-mpesa     { background: rgba(56,189,248,.12); color: var(--clr-mpesa);   border: 1px solid rgba(56,189,248,.25); }
 .badge-card      { background: rgba(129,140,248,.12); color: var(--clr-card);   border: 1px solid rgba(129,140,248,.25); }
+.badge-info      { background: rgba(129,140,248,.12); color: var(--clr-accent); border: 1px solid rgba(129,140,248,.25); }
 .badge-role-admin   { background: rgba(251,191,36,.1);  color: var(--clr-warning); border: 1px solid rgba(251,191,36,.25); }
 .badge-role-manager { background: rgba(56,189,248,.1);  color: var(--clr-primary); border: 1px solid rgba(56,189,248,.25); }
 .badge-role-cashier { background: rgba(52,211,153,.1);  color: var(--clr-success); border: 1px solid rgba(52,211,153,.25); }

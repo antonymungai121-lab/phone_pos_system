@@ -86,6 +86,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     sessionStorage.setItem('pos_username', data.username);
     sessionStorage.setItem('pos_shop_id',  data.shop_id);
     sessionStorage.setItem('pos_role',     data.role);
+    if (data.user_id) sessionStorage.setItem('pos_user_id', data.user_id);
     window.location.replace('dashboard.html');
   }
 

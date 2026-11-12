@@ -41,32 +41,59 @@ const api = {
   authStatus:     ()     => apiRequest('GET',   '/auth/status'),
   changePassword: (d)    => apiRequest('POST',  '/auth/change-password', d),
 
-  // Shops (admin: create/update/delete; all: read)
+  // Shops
   getShops:    ()        => apiRequest('GET',    '/shops/'),
   createShop:  (d)       => apiRequest('POST',   '/shops/',      d),
   updateShop:  (id, d)   => apiRequest('PUT',    `/shops/${id}`, d),
   deleteShop:  (id)      => apiRequest('DELETE', `/shops/${id}`),
 
   // Products
-  getProducts:   ()      => apiRequest('GET',    '/products/'),
-  addProduct:    (d)     => apiRequest('POST',   '/products/add', d),
-  updateProduct: (id, d) => apiRequest('PUT',    `/products/${id}`, d),
+  getProducts:        ()      => apiRequest('GET',  '/products/'),
+  getProductStock:    ()      => apiRequest('GET',  '/products/stock-overview'),
+  addProduct:         (d)     => apiRequest('POST', '/products/add', d),
+  updateProduct:      (id, d) => apiRequest('PUT',  `/products/${id}`, d),
 
-  // Inventory
-  getInventory:   ()     => apiRequest('GET',    '/inventory/'),
-  scanImei:       (d)    => apiRequest('POST',   '/inventory/scan', d),
-  stockAccessory: (d)    => apiRequest('POST',   '/inventory/stock-accessory', d),
+  // Inventory — optional ?shop_id=&status=&product_id= query params
+  getInventory: (params = {}) => {
+    const qs = new URLSearchParams(
+      Object.fromEntries(Object.entries(params).filter(([, v]) => v != null && v !== ''))
+    ).toString();
+    return apiRequest('GET', `/inventory/${qs ? '?' + qs : ''}`);
+  },
+  scanImei:        (d)        => apiRequest('POST', '/inventory/scan', d),
+  stockAccessory:  (d)        => apiRequest('POST', '/inventory/stock-accessory', d),
+  transferStock:   (d)        => apiRequest('POST', '/inventory/transfer', d),
 
-  // Sales
-  checkout:        (d)   => apiRequest('POST',   '/sales/checkout',      d),
-  sellAccessory:   (d)   => apiRequest('POST',   '/sales/sell-accessory', d),
-  getSalesHistory: ()    => apiRequest('GET',    '/sales/history'),
+  // Sales — optional ?shop_id=&cashier_id=&period=&date_from=&date_to=
+  getSalesHistory: (params = {}) => {
+    const qs = new URLSearchParams(
+      Object.fromEntries(Object.entries(params).filter(([, v]) => v != null && v !== ''))
+    ).toString();
+    return apiRequest('GET', `/sales/history${qs ? '?' + qs : ''}`);
+  },
+  checkout:       (d) => apiRequest('POST', '/sales/checkout',      d),
+  sellAccessory:  (d) => apiRequest('POST', '/sales/sell-accessory', d),
 
-  // Users (admin: full CRUD; self: change-password)
-  getUsers:         ()       => apiRequest('GET',    '/users/'),
-  createUser:       (d)      => apiRequest('POST',   '/users/',              d),
-  deleteUser:       (id)     => apiRequest('DELETE', `/users/${id}`),
-  reassignUserShop: (id, d)  => apiRequest('PATCH',  `/users/${id}/shop`,    d),
+  // Dashboard
+  getDashboardStats: () => apiRequest('GET', '/dashboard/stats'),
+
+  // Users
+  getUsers:         ()      => apiRequest('GET',    '/users/'),
+  createUser:       (d)     => apiRequest('POST',   '/users/',           d),
+  deleteUser:       (id)    => apiRequest('DELETE', `/users/${id}`),
+  reassignUserShop: (id, d) => apiRequest('PATCH',  `/users/${id}/shop`, d),
+  adminResetPassword: (id, d) => apiRequest('PATCH', `/users/${id}/password`, d),
+
+  // Products
+  deleteProduct:    (id)    => apiRequest('DELETE', `/products/${id}`),
+
+  // Reports
+  getReportDaily:        (p = {}) => { const qs = new URLSearchParams(Object.fromEntries(Object.entries(p).filter(([,v]) => v != null && v !== ''))).toString(); return apiRequest('GET', `/reports/daily-summary${qs ? '?' + qs : ''}`); },
+  getReportStaff:        (p = {}) => { const qs = new URLSearchParams(Object.fromEntries(Object.entries(p).filter(([,v]) => v != null && v !== ''))).toString(); return apiRequest('GET', `/reports/staff-performance${qs ? '?' + qs : ''}`); },
+  getReportTopProducts:  (p = {}) => { const qs = new URLSearchParams(Object.fromEntries(Object.entries(p).filter(([,v]) => v != null && v !== ''))).toString(); return apiRequest('GET', `/reports/top-products${qs ? '?' + qs : ''}`); },
+  getReportPeakHours:    (p = {}) => { const qs = new URLSearchParams(Object.fromEntries(Object.entries(p).filter(([,v]) => v != null && v !== ''))).toString(); return apiRequest('GET', `/reports/peak-hours${qs ? '?' + qs : ''}`); },
+  getReportAlerts:       (p = {}) => { const qs = new URLSearchParams(Object.fromEntries(Object.entries(p).filter(([,v]) => v != null && v !== ''))).toString(); return apiRequest('GET', `/reports/inventory-alerts${qs ? '?' + qs : ''}`); },
+  getReportReconcile:    (p = {}) => { const qs = new URLSearchParams(Object.fromEntries(Object.entries(p).filter(([,v]) => v != null && v !== ''))).toString(); return apiRequest('GET', `/reports/reconciliation${qs ? '?' + qs : ''}`); },
 };
 
 window.api = api;

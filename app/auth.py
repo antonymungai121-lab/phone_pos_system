@@ -114,9 +114,10 @@ def login(
     return {
         "access_token": access_token,
         "token_type": "bearer",
-        "shop_id": user.shop_id,
+        "user_id":  user.id,
+        "shop_id":  user.shop_id,
         "username": user.username,
-        "role": user.role,
+        "role":     user.role,
     }
 
 
@@ -228,9 +229,10 @@ def register(
     return {
         "access_token": access_token,
         "token_type": "bearer",
-        "shop_id": new_user.shop_id,
+        "user_id":  new_user.id,
+        "shop_id":  new_user.shop_id,
         "username": new_user.username,
-        "role": new_user.role,
+        "role":     new_user.role,
         "message": "Admin account created successfully! You are now logged in.",
     }
 

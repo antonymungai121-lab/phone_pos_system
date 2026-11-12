@@ -105,12 +105,50 @@ def sell_accessory(
 def get_sales_history(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
+    shop_id: int = None,
+    cashier_id: int = None,
+    date_from: str = None,
+    date_to: str = None,
+    period: str = None,         # "day" | "week" | "month"
 ):
     """
-    Sales history for the current user's shop.
-    Admins see all shops.
+    Sales history with optional filters.
+    - Admins can pass any shop_id; non-admins are locked to their own shop.
+    - cashier_id, date_from (YYYY-MM-DD), date_to (YYYY-MM-DD), period filters available.
     """
     query = db.query(models.Sale)
-    if current_user.role != "admin":
+
+    # Scope to branch
+    if current_user.role == "admin":
+        if shop_id:
+            query = query.filter(models.Sale.shop_id == shop_id)
+    else:
         query = query.filter(models.Sale.shop_id == current_user.shop_id)
+
+    # Cashier filter (cashiers can only see own sales)
+    if current_user.role == "cashier":
+        query = query.filter(models.Sale.cashier_id == current_user.id)
+    elif cashier_id:
+        query = query.filter(models.Sale.cashier_id == cashier_id)
+
+    # Period shortcut (overrides date_from/date_to)
+    if period:
+        now = datetime.datetime.utcnow()
+        if period == "day":
+            start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        elif period == "week":
+            start = now - datetime.timedelta(days=now.weekday())
+            start = start.replace(hour=0, minute=0, second=0, microsecond=0)
+        elif period == "month":
+            start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        else:
+            start = None
+        if start:
+            query = query.filter(models.Sale.sold_at >= start)
+    else:
+        if date_from:
+            query = query.filter(models.Sale.sold_at >= date_from)
+        if date_to:
+            query = query.filter(models.Sale.sold_at <= date_to + " 23:59:59")
+
     return query.order_by(models.Sale.sold_at.desc()).all()

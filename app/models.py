@@ -21,11 +21,15 @@ class Shop(Base):
 class Product(Base):
     __tablename__ = "products"
 
-    id    = Column(Integer, primary_key=True, index=True)
-    brand = Column(String, nullable=False)
-    model = Column(String, unique=True, index=True, nullable=False)
+    id             = Column(Integer, primary_key=True, index=True)
+    brand          = Column(String, nullable=False)
+    model          = Column(String, unique=True, index=True, nullable=False)
     # Numeric(10,2) prevents floating-point rounding errors on currency
-    price = Column(Numeric(10, 2), nullable=False)
+    price          = Column(Numeric(10, 2), nullable=False)
+    # "phone" or "accessory"
+    category       = Column(String, default="phone", nullable=False)
+    # For accessories: charger | earphone | earpod | back_cover | screen_protector | other
+    accessory_type = Column(String, nullable=True)
 
     # Relationships
     inventory = relationship("IMEIItem", back_populates="product")
