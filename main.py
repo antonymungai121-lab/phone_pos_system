@@ -34,12 +34,13 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # ── CORS ────────────────────────────────────────────────────────────────────
-# allow_origin_regex covers ALL localhost ports + file:// (null origin)
-# In production, replace with your actual domain in ALLOWED_ORIGINS (.env)
+# In production set ALLOWED_ORIGINS in Railway Variables to your Netlify URL.
+# For local development the .env default covers localhost ports.
+_origins = settings.ALLOWED_ORIGINS if settings.ALLOWED_ORIGINS else ["*"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],          # broadened for local development
-    allow_credentials=False,      # must be False when allow_origins=["*"]
+    allow_origins=_origins,
+    allow_credentials=len(_origins) > 0 and "*" not in _origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )

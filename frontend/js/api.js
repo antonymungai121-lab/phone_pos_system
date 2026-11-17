@@ -1,9 +1,15 @@
 /**
  * api.js — Centralised API client for PhonePOS.
  * All requests automatically inject the JWT Authorization header.
+ *
+ * ── Deployment ──────────────────────────────────────────────────────────────
+ * Change API_BASE to your Railway backend URL before deploying to Netlify:
+ *   e.g. 'https://phone-pos-system-production.up.railway.app'
+ * For local development leave it as 'http://127.0.0.1:8000'.
+ * ────────────────────────────────────────────────────────────────────────────
  */
 
-const API_BASE = 'http://127.0.0.1:8000';
+const API_BASE = 'http://127.0.0.1:8000';   // ← swap this for your Railway URL
 
 async function apiRequest(method, path, body = null) {
   const token = sessionStorage.getItem('pos_token');
