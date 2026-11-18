@@ -9,7 +9,7 @@
  * ────────────────────────────────────────────────────────────────────────────
  */
 
-const API_BASE = 'http://127.0.0.1:8000';   // ← swap this for your Railway URL
+const API_BASE = 'https://web-production-b1945652.up.railway.app';   // Railway backend
 
 async function apiRequest(method, path, body = null) {
   const token = sessionStorage.getItem('pos_token');
