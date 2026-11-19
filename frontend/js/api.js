@@ -9,7 +9,10 @@
  * ────────────────────────────────────────────────────────────────────────────
  */
 
-const API_BASE = 'https://web-production-b1945652.up.railway.app';   // Railway backend
+// Auto-detect: use local backend for dev, Render backend for production
+const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+  ? 'http://127.0.0.1:8000'
+  : 'https://RENDER_URL_PLACEHOLDER';   // ← Will be replaced after Render deploy
 
 async function apiRequest(method, path, body = null) {
   const token = sessionStorage.getItem('pos_token');

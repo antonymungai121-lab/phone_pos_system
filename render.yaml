@@ -1,0 +1,28 @@
+databases:
+  - name: phonepos-db
+    plan: free
+    databaseName: phonepos
+    user: phonepos_user
+
+services:
+  - type: web
+    name: phonepos-api
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ALLOWED_ORIGINS
+        value: https://YOUR-SITE.netlify.app
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "480"
+      - key: SETUP_SECRET
+        value: phonepos2024setup
+      - key: DATABASE_URL
+        fromDatabase:
+          name: phonepos-db
+          property: connectionURI
+      - key: PYTHON_VERSION
+        value: "3.11.11"

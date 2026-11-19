@@ -14,5 +14,5 @@ python-multipart==0.0.32
 # Rate limiting on /auth/login
 slowapi==0.1.9
 
-# PostgreSQL driver (used on Railway; SQLite is used locally)
+# PostgreSQL driver (used on Render; SQLite is used locally)
 psycopg2-binary==2.9.10
