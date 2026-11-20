@@ -26,7 +26,17 @@ async function apiRequest(method, path, body = null) {
   if (res.status === 204) return null;
 
   const data = await res.json().catch(() => ({ detail: 'Unknown server error' }));
-  if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+  if (!res.ok) {
+    let msg = `HTTP ${res.status}`;
+    if (typeof data.detail === 'string') {
+      msg = data.detail;
+    } else if (Array.isArray(data.detail)) {
+      msg = data.detail.map(d => d.msg || JSON.stringify(d)).join(', ');
+    } else if (data.detail) {
+      msg = JSON.stringify(data.detail);
+    }
+    throw new Error(msg);
+  }
   return data;
 }
 

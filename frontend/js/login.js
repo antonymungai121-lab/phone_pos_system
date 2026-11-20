@@ -17,12 +17,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // ── Check system status (is registration open?) ───────────────────────────
-  let registrationOpen = false;
+  let registrationOpen = true; // Default to open for first-time admin setup
   let serverReachable = false;
   try {
     const status = await api.authStatus();
     serverReachable = true;
-    registrationOpen = status.registration_open;
+    registrationOpen = (status.registration_open !== false);
 
     // If first-time setup, pre-select the Create Account tab and hint the user
     if (registrationOpen) {
