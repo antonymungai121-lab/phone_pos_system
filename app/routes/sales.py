@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/sales", tags=["Sales"])
 
 
-@router.post("/checkout", response_model=schemas.SaleResponse, status_code=201)
+@router.post("/checkout", response_model=schemas.SaleReceiptResponse, status_code=201)
 def process_sale(
     item: schemas.POSCheckout,
     db: Session = Depends(get_db),
@@ -55,10 +55,25 @@ def process_sale(
         sale.id, item.imei_number, current_user.shop_id,
         current_user.username, item.sale_price, item.payment_method,
     )
-    return sale
+    product = db_item.product
+    shop = db.query(models.Shop).filter(models.Shop.id == sale.shop_id).first()
+    return {
+        "id": sale.id, "imei_item_id": sale.imei_item_id,
+        "shop_id": sale.shop_id, "cashier_id": sale.cashier_id,
+        "sale_price": sale.sale_price, "payment_method": sale.payment_method,
+        "sold_at": sale.sold_at,
+        "product_brand": product.brand if product else "",
+        "product_model": product.model if product else "",
+        "product_category": product.category if product else "",
+        "imei_number": db_item.imei_number,
+        "cashier_name": current_user.username,
+        "shop_name": shop.name if shop else "",
+        "shop_location": shop.location if shop else "",
+        "receipt_number": f"RCP-{sale.id:06d}",
+    }
 
 
-@router.post("/sell-accessory", response_model=schemas.SaleResponse, status_code=201)
+@router.post("/sell-accessory", response_model=schemas.SaleReceiptResponse, status_code=201)
 def sell_accessory(
     data: schemas.QuickSell,
     db: Session = Depends(get_db),
@@ -98,7 +113,22 @@ def sell_accessory(
         sale.id, data.product_id, current_user.shop_id,
         current_user.username, data.sale_price, data.payment_method,
     )
-    return sale
+    product = db_item.product
+    shop = db.query(models.Shop).filter(models.Shop.id == sale.shop_id).first()
+    return {
+        "id": sale.id, "imei_item_id": sale.imei_item_id,
+        "shop_id": sale.shop_id, "cashier_id": sale.cashier_id,
+        "sale_price": sale.sale_price, "payment_method": sale.payment_method,
+        "sold_at": sale.sold_at,
+        "product_brand": product.brand if product else "",
+        "product_model": product.model if product else "",
+        "product_category": product.category if product else "",
+        "imei_number": db_item.imei_number,
+        "cashier_name": current_user.username,
+        "shop_name": shop.name if shop else "",
+        "shop_location": shop.location if shop else "",
+        "receipt_number": f"RCP-{sale.id:06d}",
+    }
 
 
 @router.get("/history", response_model=list[schemas.SaleResponse])

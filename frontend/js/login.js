@@ -18,8 +18,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // ── Check system status (is registration open?) ───────────────────────────
   let registrationOpen = false;
+  let serverReachable = false;
   try {
     const status = await api.authStatus();
+    serverReachable = true;
     registrationOpen = status.registration_open;
 
     // If first-time setup, pre-select the Create Account tab and hint the user
@@ -27,7 +29,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       switchTab('register');
     }
   } catch {
-    // Server may be down — just show login form
+    // Server unreachable (cold start, CORS, etc.) — allow user to try registering
+    registrationOpen = true;
+    switchTab('register');
   }
 
   // ── Tab switching ─────────────────────────────────────────────────────────
@@ -55,13 +59,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (registrationOpen) {
       notice.classList.remove('hidden');
       closed.classList.add('hidden');
-      shopFld.classList.remove('hidden');   // show shop fields on first setup
+      shopFld.classList.remove('hidden');
       fields.style.pointerEvents = '';
       fields.style.opacity = '';
+      // Ensure form fields are visible
+      document.getElementById('regUsername').closest('.form-group').classList.remove('hidden');
+      document.getElementById('regPassword').closest('.form-group').classList.remove('hidden');
+      document.getElementById('regConfirm').closest('.form-group').classList.remove('hidden');
+      document.getElementById('registerBtn').classList.remove('hidden');
+
+      // If server wasn't reachable, update notice text
+      if (!serverReachable) {
+        notice.querySelector('strong').textContent = 'First-Time Setup';
+        notice.querySelector('p').textContent = 'Server is warming up… Create your admin account below. If it fails, wait 30 seconds and try again.';
+      }
     } else {
       notice.classList.add('hidden');
       closed.classList.remove('hidden');
-      // Hide the form inputs — registration not available
       document.getElementById('regUsername').closest('.form-group').classList.add('hidden');
       document.getElementById('regPassword').closest('.form-group').classList.add('hidden');
       document.getElementById('regConfirm').closest('.form-group').classList.add('hidden');

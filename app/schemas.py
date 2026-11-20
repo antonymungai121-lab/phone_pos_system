@@ -100,6 +100,28 @@ class SaleResponse(BaseModel):
         from_attributes = True
 
 
+class SaleReceiptResponse(BaseModel):
+    id:             int
+    imei_item_id:   int
+    shop_id:        int
+    cashier_id:     int
+    sale_price:     Decimal
+    payment_method: str
+    sold_at:        datetime
+    product_brand:  str = ""
+    product_model:  str = ""
+    product_category: str = ""
+    imei_number:    str = ""
+    cashier_name:   str = ""
+    shop_name:      str = ""
+    shop_location:  str = ""
+    receipt_number: str = ""
+
+    class Config:
+        from_attributes = True
+
+
+
 # ── USER SCHEMAS ──────────────────────────────────────────────────────────────
 class UserCreate(BaseModel):
     username: str = Field(..., min_length=3, max_length=50)

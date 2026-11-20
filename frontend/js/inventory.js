@@ -15,6 +15,38 @@ let _selectedShopId = null;
 let _statusFilter   = '';
 let _catFilter      = '';
 let _searchQ        = '';
+let _sortMode       = 'recent';  // recent | oldest | brand-az | brand-za | status
+
+const SORT_MODES = [
+  { key: 'recent',   label: 'Newest First',   icon: 'fa-arrow-down-wide-short' },
+  { key: 'oldest',   label: 'Oldest First',   icon: 'fa-arrow-up-wide-short' },
+  { key: 'brand-az', label: 'Brand A → Z',    icon: 'fa-arrow-down-a-z' },
+  { key: 'brand-za', label: 'Brand Z → A',    icon: 'fa-arrow-up-z-a' },
+  { key: 'status',   label: 'By Status',      icon: 'fa-filter' },
+];
+
+function sortItems(items) {
+  const getProd = i => _products.find(p => p.id === i.product_id);
+  switch (_sortMode) {
+    case 'recent':
+      return items.sort((a, b) => new Date(b.date_sold || b.date_added) - new Date(a.date_sold || a.date_added));
+    case 'oldest':
+      return items.sort((a, b) => new Date(a.date_sold || a.date_added) - new Date(b.date_sold || b.date_added));
+    case 'brand-az':
+      return items.sort((a, b) => {
+        const pa = getProd(a), pb = getProd(b);
+        return ((pa?.brand||'')+(pa?.model||'')).localeCompare((pb?.brand||'')+(pb?.model||''));
+      });
+    case 'brand-za':
+      return items.sort((a, b) => {
+        const pa = getProd(a), pb = getProd(b);
+        return ((pb?.brand||'')+(pb?.model||'')).localeCompare((pa?.brand||'')+(pa?.model||''));
+      });
+    case 'status':
+      return items.sort((a, b) => a.status.localeCompare(b.status));
+    default: return items;
+  }
+}
 
 document.addEventListener('DOMContentLoaded', async () => {
   const { role, shopId } = getSession();
@@ -130,8 +162,10 @@ function applyFilters() {
     });
   }
 
+  items = sortItems(items);
   renderKPIs(items);
   renderTable(items);
+  renderSortBar();
 }
 
 function renderKPIs(items) {
@@ -208,4 +242,26 @@ function wireFilters() {
     _searchQ = e.target.value.toLowerCase();
     applyFilters();
   });
+}
+
+function renderSortBar() {
+  const old = document.getElementById('invSortBar');
+  if (old) old.remove();
+  const bar = document.createElement('div');
+  bar.id = 'invSortBar';
+  bar.style.cssText = 'display:flex;align-items:center;gap:8px;justify-content:flex-end;padding:12px 0 4px;flex-wrap:wrap;';
+  const label = document.createElement('span');
+  label.style.cssText = 'font-size:.78rem;color:var(--txt-muted);';
+  label.textContent = 'Sort:';
+  bar.appendChild(label);
+  SORT_MODES.forEach(mode => {
+    const btn = document.createElement('button');
+    btn.className = 'status-tab' + (mode.key === _sortMode ? ' active' : '');
+    btn.style.cssText = 'font-size:.75rem;padding:5px 12px;';
+    btn.innerHTML = `<i class="fa-solid ${mode.icon}"></i> ${mode.label}`;
+    btn.addEventListener('click', () => { _sortMode = mode.key; applyFilters(); });
+    bar.appendChild(btn);
+  });
+  const tableCard = document.querySelector('.table-wrap')?.closest('.card');
+  if (tableCard) tableCard.after(bar);
 }

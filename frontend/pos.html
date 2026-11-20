@@ -42,6 +42,34 @@
       font-weight: 800; font-size: 1.05rem; color: var(--clr-primary);
     }
     .receipt-empty { text-align: center; color: var(--txt-muted); padding: 30px 0; font-size: .88rem; }
+    .receipt-divider {
+      border-top: 1px dashed var(--clr-border); margin: 6px 0;
+    }
+    .receipt-rcpno .rv { color: var(--clr-accent); font-size: .9rem; }
+    .receipt-footer-msg {
+      text-align: center; font-size: .78rem; color: var(--txt-muted);
+      margin: 14px 0 4px; font-style: italic;
+    }
+    .receipt-actions { margin-top: 10px; }
+    .mono { font-family: 'Courier New', Courier, monospace; letter-spacing: .5px; }
+    @media print {
+      body * { visibility: hidden; }
+      .receipt-panel, .receipt-panel * { visibility: visible; }
+      .receipt-panel {
+        position: absolute; left: 0; top: 0;
+        width: 80mm; padding: 10px;
+        background: #fff !important; color: #000 !important;
+        border: none !important; box-shadow: none !important;
+      }
+      .receipt-header h3 { color: #000 !important; }
+      .receipt-header p { color: #333 !important; }
+      .receipt-row .rl { color: #555 !important; }
+      .receipt-row .rv { color: #000 !important; }
+      .receipt-total { color: #000 !important; border-top: 2px solid #000; padding-top: 8px; }
+      .receipt-divider { border-color: #999 !important; }
+      .receipt-footer-msg { color: #555 !important; }
+      .receipt-actions, .card-header { display: none !important; }
+    }
   </style>
 </head>
 <body class="app-page">
@@ -158,22 +186,32 @@
         <div class="card-header">
           <h2 class="card-title"><i class="fa-solid fa-receipt"></i> Receipt</h2>
         </div>
-        <div class="receipt-header">
-          <h3 id="receiptShopName">PhonePOS</h3>
-          <p id="receiptDateTime">&mdash;</p>
-        </div>
         <div id="receiptEmpty" class="receipt-empty">
           <i class="fa-regular fa-file-lines" style="font-size:2rem;opacity:.3"></i><br>
           No sale processed yet
         </div>
         <div id="receiptBody" style="display:none">
+          <div class="receipt-header">
+            <h3 id="receiptShopName">PhonePOS</h3>
+            <p id="receiptShopLocation"></p>
+            <p id="receiptDateTime">&mdash;</p>
+          </div>
+          <div class="receipt-row receipt-rcpno"><span class="rl">Receipt #</span><span class="rv mono" id="rReceiptNo">—</span></div>
+          <div class="receipt-divider"></div>
           <div class="receipt-row"><span class="rl">Item</span><span class="rv" id="rItem">—</span></div>
-          <div class="receipt-row"><span class="rl">Cashier</span><span class="rv" id="rCashier">—</span></div>
+          <div class="receipt-row"><span class="rl">Category</span><span class="rv" id="rCategory">—</span></div>
+          <div class="receipt-row"><span class="rl">IMEI / Serial</span><span class="rv mono" id="rImei">—</span></div>
+          <div class="receipt-divider"></div>
+          <div class="receipt-row"><span class="rl">Served By</span><span class="rv" id="rCashier">—</span></div>
           <div class="receipt-row"><span class="rl">Payment</span><span class="rv" id="rPayment">—</span></div>
-          <div class="receipt-total"><span>Total</span><span id="rAmount">—</span></div>
-          <button class="btn btn-ghost btn-sm btn-full" id="printReceiptBtn" style="margin-top:14px">
-            <i class="fa-solid fa-print"></i> Print Receipt
-          </button>
+          <div class="receipt-divider"></div>
+          <div class="receipt-total"><span>TOTAL</span><span id="rAmount">—</span></div>
+          <p class="receipt-footer-msg">Thank you for shopping with us!</p>
+          <div class="receipt-actions">
+            <button class="btn btn-ghost btn-sm btn-full" id="printReceiptBtn">
+              <i class="fa-solid fa-print"></i> Print Receipt
+            </button>
+          </div>
         </div>
       </div>
     </div>

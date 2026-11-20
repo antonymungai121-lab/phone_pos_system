@@ -13,6 +13,26 @@ let _activeCat     = 'all';
 let _searchQ       = '';
 let _stockBranch   = null; // selected branch id for Add Stock wizard
 let _stockType     = null; // 'phone' | 'accessory'
+let _prodSort      = 'newest'; // newest | name-az | name-za | price-low | price-high
+
+const PROD_SORT_MODES = [
+  { key: 'newest',     label: 'Newest',            icon: 'fa-arrow-down-wide-short' },
+  { key: 'name-az',    label: 'Name A → Z',        icon: 'fa-arrow-down-a-z' },
+  { key: 'name-za',    label: 'Name Z → A',        icon: 'fa-arrow-up-z-a' },
+  { key: 'price-low',  label: 'Price: Low → High', icon: 'fa-arrow-up-1-9' },
+  { key: 'price-high', label: 'Price: High → Low', icon: 'fa-arrow-down-9-1' },
+];
+
+function sortProducts(items) {
+  switch (_prodSort) {
+    case 'newest':     return items.sort((a, b) => b.id - a.id);
+    case 'name-az':    return items.sort((a, b) => (a.brand+' '+a.model).localeCompare(b.brand+' '+b.model));
+    case 'name-za':    return items.sort((a, b) => (b.brand+' '+b.model).localeCompare(a.brand+' '+a.model));
+    case 'price-low':  return items.sort((a, b) => Number(a.price) - Number(b.price));
+    case 'price-high': return items.sort((a, b) => Number(b.price) - Number(a.price));
+    default: return items;
+  }
+}
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
@@ -91,12 +111,15 @@ function renderGrid() {
     );
   }
 
+  items = sortProducts(items);
+
   if (!items.length) {
     grid.innerHTML = '<p style="color:var(--txt-muted);text-align:center;padding:40px;grid-column:1/-1">No products found.</p>';
     return;
   }
 
   grid.innerHTML = items.map(p => renderProductCard(p)).join('');
+  renderProductSortBar();
 }
 
 function renderProductCard(p) {
@@ -554,4 +577,26 @@ function wireEditProductModal() {
       btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save Changes';
     }
   });
+}
+
+function renderProductSortBar() {
+  const old = document.getElementById('prodSortBar');
+  if (old) old.remove();
+  const bar = document.createElement('div');
+  bar.id = 'prodSortBar';
+  bar.style.cssText = 'display:flex;align-items:center;gap:8px;justify-content:flex-end;padding:14px 0 4px;flex-wrap:wrap;';
+  const label = document.createElement('span');
+  label.style.cssText = 'font-size:.78rem;color:var(--txt-muted);';
+  label.textContent = 'Sort:';
+  bar.appendChild(label);
+  PROD_SORT_MODES.forEach(mode => {
+    const btn = document.createElement('button');
+    btn.className = 'cat-tab' + (mode.key === _prodSort ? ' active' : '');
+    btn.style.cssText = 'font-size:.75rem;padding:5px 12px;';
+    btn.innerHTML = `<i class="fa-solid ${mode.icon}"></i> ${mode.label}`;
+    btn.addEventListener('click', () => { _prodSort = mode.key; renderGrid(); });
+    bar.appendChild(btn);
+  });
+  const grid = document.getElementById('productsGrid');
+  if (grid) grid.after(bar);
 }

@@ -9,8 +9,6 @@ let _allProducts  = [];
 
 document.addEventListener('DOMContentLoaded', async () => {
   const { username, shopId } = getSession();
-  document.getElementById('receiptShopName').textContent =
-    getSession().shopName || `Shop #${shopId}`;
 
   // Load products into accessory dropdown + cache for IMEI lookup
   try {
@@ -172,11 +170,32 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 function renderReceipt({ item, sale, cashier }) {
   const now = sale.sold_at ? new Date(sale.sold_at) : new Date();
+
+  // Header
+  document.getElementById('receiptShopName').textContent = sale.shop_name || getSession().shopName || 'PhonePOS';
+  const locEl = document.getElementById('receiptShopLocation');
+  if (locEl) locEl.textContent = sale.shop_location || '';
   document.getElementById('receiptDateTime').textContent = now.toLocaleString('en-KE', {
     dateStyle: 'medium', timeStyle: 'short',
   });
-  document.getElementById('rItem').textContent    = item;
-  document.getElementById('rCashier').textContent = cashier;
+
+  // Receipt number
+  document.getElementById('rReceiptNo').textContent = sale.receipt_number || `RCP-${String(sale.id).padStart(6,'0')}`;
+
+  // Item details
+  const itemLabel = (sale.product_brand && sale.product_model)
+    ? `${sale.product_brand} ${sale.product_model}`
+    : item;
+  document.getElementById('rItem').textContent = itemLabel;
+
+  const catEl = document.getElementById('rCategory');
+  if (catEl) catEl.textContent = (sale.product_category || 'N/A').charAt(0).toUpperCase() + (sale.product_category || '').slice(1);
+
+  const imeiEl = document.getElementById('rImei');
+  if (imeiEl) imeiEl.textContent = sale.imei_number || '—';
+
+  // Transaction
+  document.getElementById('rCashier').textContent = sale.cashier_name || cashier;
   document.getElementById('rPayment').textContent = sale.payment_method.toUpperCase();
   document.getElementById('rAmount').textContent  = fmtKES(sale.sale_price);
 
