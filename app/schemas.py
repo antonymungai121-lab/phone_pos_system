@@ -95,6 +95,14 @@ class SaleResponse(BaseModel):
     sale_price:     Decimal
     payment_method: str
     sold_at:        datetime
+    product_brand:  str = ""
+    product_model:  str = ""
+    product_category: str = ""
+    imei_number:    str = ""
+    cashier_name:   str = ""
+    shop_name:      str = ""
+    shop_location:  str = ""
+    receipt_number: str = ""
 
     class Config:
         from_attributes = True

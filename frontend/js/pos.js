@@ -10,6 +10,24 @@ let _allProducts  = [];
 document.addEventListener('DOMContentLoaded', async () => {
   const { username, shopId } = getSession();
 
+  // Restore previous receipt if available in sessionStorage, or auto-fetch latest sale
+  const cachedReceipt = sessionStorage.getItem('pos_last_receipt');
+  if (cachedReceipt) {
+    try {
+      renderReceipt(JSON.parse(cachedReceipt));
+    } catch (_) {}
+  } else {
+    api.getSalesHistory({ period: 'day' }).then(sales => {
+      if (sales && sales.length > 0) {
+        const latest = sales[0];
+        const itemLabel = (latest.product_brand && latest.product_model)
+          ? `${latest.product_brand} ${latest.product_model}`
+          : `Item #${latest.imei_item_id}`;
+        renderReceipt({ item: itemLabel, sale: latest, cashier: latest.cashier_name || username });
+      }
+    }).catch(() => {});
+  }
+
   // Load products into accessory dropdown + cache for IMEI lookup
   try {
     [_allProducts, _allInventory] = await Promise.all([
@@ -112,7 +130,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       const prod = item ? _allProducts.find(p => p.id === item.product_id) : null;
       const label = prod ? `${prod.brand} ${prod.model} (${imei})` : `IMEI: ${imei}`;
 
-      renderReceipt({ item: label, sale, cashier: username });
+      const receiptData = { item: label, sale, cashier: username };
+      sessionStorage.setItem('pos_last_receipt', JSON.stringify(receiptData));
+      renderReceipt(receiptData);
       showAlert('✅ Sale processed!', 'success');
       e.target.reset();
       fillInfo.classList.remove('visible');
@@ -151,8 +171,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         payment_method: paymentMethod,
       });
 
-      const selText = document.getElementById('accProduct').selectedOptions[0].text;
-      renderReceipt({ item: selText, sale, cashier: username });
+      const selText = document.getElementById('accProduct').selectedOptions[0]?.text || 'Accessory';
+      const receiptData = { item: selText, sale, cashier: username };
+      sessionStorage.setItem('pos_last_receipt', JSON.stringify(receiptData));
+      renderReceipt(receiptData);
       showAlert('✅ Accessory sold!', 'success');
       e.target.reset();
 
@@ -169,36 +191,57 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 function renderReceipt({ item, sale, cashier }) {
+  if (!sale) return;
   const now = sale.sold_at ? new Date(sale.sold_at) : new Date();
 
   // Header
-  document.getElementById('receiptShopName').textContent = sale.shop_name || getSession().shopName || 'PhonePOS';
+  const shopNameEl = document.getElementById('receiptShopName');
+  if (shopNameEl) shopNameEl.textContent = sale.shop_name || getSession().shopName || 'PhonePOS';
+
   const locEl = document.getElementById('receiptShopLocation');
   if (locEl) locEl.textContent = sale.shop_location || '';
-  document.getElementById('receiptDateTime').textContent = now.toLocaleString('en-KE', {
-    dateStyle: 'medium', timeStyle: 'short',
-  });
+
+  const dateEl = document.getElementById('receiptDateTime');
+  if (dateEl) {
+    dateEl.textContent = now.toLocaleString('en-KE', {
+      dateStyle: 'medium', timeStyle: 'short',
+    });
+  }
 
   // Receipt number
-  document.getElementById('rReceiptNo').textContent = sale.receipt_number || `RCP-${String(sale.id).padStart(6,'0')}`;
+  const rcpNoEl = document.getElementById('rReceiptNo');
+  if (rcpNoEl) rcpNoEl.textContent = sale.receipt_number || `RCP-${String(sale.id || 0).padStart(6, '0')}`;
 
   // Item details
   const itemLabel = (sale.product_brand && sale.product_model)
     ? `${sale.product_brand} ${sale.product_model}`
-    : item;
-  document.getElementById('rItem').textContent = itemLabel;
+    : (item || 'Item');
+  const itemEl = document.getElementById('rItem');
+  if (itemEl) itemEl.textContent = itemLabel;
 
   const catEl = document.getElementById('rCategory');
-  if (catEl) catEl.textContent = (sale.product_category || 'N/A').charAt(0).toUpperCase() + (sale.product_category || '').slice(1);
+  if (catEl) {
+    const rawCat = sale.product_category || '';
+    catEl.textContent = rawCat ? (rawCat.charAt(0).toUpperCase() + rawCat.slice(1)) : 'General';
+  }
 
   const imeiEl = document.getElementById('rImei');
   if (imeiEl) imeiEl.textContent = sale.imei_number || '—';
 
   // Transaction
-  document.getElementById('rCashier').textContent = sale.cashier_name || cashier;
-  document.getElementById('rPayment').textContent = sale.payment_method.toUpperCase();
-  document.getElementById('rAmount').textContent  = fmtKES(sale.sale_price);
+  const cashierEl = document.getElementById('rCashier');
+  if (cashierEl) cashierEl.textContent = sale.cashier_name || cashier || 'Staff';
 
-  document.getElementById('receiptEmpty').style.display = 'none';
-  document.getElementById('receiptBody').style.display  = 'block';
+  const paymentEl = document.getElementById('rPayment');
+  if (paymentEl) paymentEl.textContent = (sale.payment_method || 'CASH').toUpperCase();
+
+  const amountEl = document.getElementById('rAmount');
+  if (amountEl) amountEl.textContent = fmtKES(sale.sale_price || 0);
+
+  // Show receipt body, hide empty placeholder
+  const emptyEl = document.getElementById('receiptEmpty');
+  if (emptyEl) emptyEl.style.display = 'none';
+
+  const bodyEl = document.getElementById('receiptBody');
+  if (bodyEl) bodyEl.style.display = 'block';
 }

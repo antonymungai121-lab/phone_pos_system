@@ -57,18 +57,29 @@ def get_dashboard_stats(
             revenue_query = revenue_query.filter(models.Sale.cashier_id == current_user.id)
         today_revenue = float(revenue_query.scalar() or 0)
 
-        # Sold items today with cashier info
-        sold_today_query = db.query(
-            models.Sale.id,
-            models.Sale.imei_item_id,
-            models.Sale.cashier_id,
-            models.Sale.sale_price,
-            models.Sale.payment_method,
-            models.Sale.sold_at,
-            models.User.username.label("cashier_name"),
-        ).join(models.User, models.Sale.cashier_id == models.User.id).filter(
-            models.Sale.shop_id == shop.id,
-            models.Sale.sold_at >= today_start,
+        # Sold items today with cashier, item, and product info
+        sold_today_query = (
+            db.query(
+                models.Sale.id,
+                models.Sale.imei_item_id,
+                models.Sale.shop_id,
+                models.Sale.cashier_id,
+                models.Sale.sale_price,
+                models.Sale.payment_method,
+                models.Sale.sold_at,
+                models.User.username.label("cashier_name"),
+                models.IMEIItem.imei_number,
+                models.Product.brand.label("product_brand"),
+                models.Product.model.label("product_model"),
+                models.Product.category.label("product_category"),
+            )
+            .join(models.User, models.Sale.cashier_id == models.User.id)
+            .outerjoin(models.IMEIItem, models.Sale.imei_item_id == models.IMEIItem.id)
+            .outerjoin(models.Product, models.IMEIItem.product_id == models.Product.id)
+            .filter(
+                models.Sale.shop_id == shop.id,
+                models.Sale.sold_at >= today_start,
+            )
         )
         if current_user.role == "cashier":
             sold_today_query = sold_today_query.filter(models.Sale.cashier_id == current_user.id)
@@ -77,11 +88,19 @@ def get_dashboard_stats(
             {
                 "id": r.id,
                 "imei_item_id": r.imei_item_id,
+                "shop_id": r.shop_id,
+                "shop_name": shop.name,
+                "shop_location": shop.location or "",
                 "cashier_id": r.cashier_id,
                 "cashier_name": r.cashier_name,
                 "sale_price": float(r.sale_price),
                 "payment_method": r.payment_method,
                 "sold_at": r.sold_at.isoformat() if r.sold_at else None,
+                "product_brand": r.product_brand or "",
+                "product_model": r.product_model or "",
+                "product_category": r.product_category or "",
+                "imei_number": r.imei_number or "",
+                "receipt_number": f"RCP-{r.id:06d}",
             }
             for r in sold_today_query.order_by(models.Sale.sold_at.desc()).all()
         ]

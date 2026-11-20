@@ -122,16 +122,29 @@ function renderSoldTodayTable(branch) {
             </p>`;
   }
 
-  const rows = branch.sold_today.map(s => `
-    <tr>
-      <td>#${s.id}</td>
-      <td class="mono">${s.imei_item_id}</td>
-      <td><span class="badge badge-info">${s.cashier_name || `#${s.cashier_id}`}</span></td>
-      <td class="amount-cell">${fmtKES(s.sale_price)}</td>
-      <td><span class="badge badge-${s.payment_method}">${s.payment_method}</span></td>
-      <td>${fmtDateTime(s.sold_at)}</td>
-    </tr>
-  `).join('');
+  const rows = branch.sold_today.map(s => {
+    const itemLabel = (s.product_brand && s.product_model)
+      ? `${s.product_brand} ${s.product_model}`
+      : `Item #${s.imei_item_id}`;
+    const rcpNo = s.receipt_number || `RCP-${String(s.id).padStart(6, '0')}`;
+    const safeSale = encodeURIComponent(JSON.stringify(s));
+
+    return `
+      <tr>
+        <td class="mono font-semibold" style="color:var(--clr-accent)">${rcpNo}</td>
+        <td><strong>${itemLabel}</strong></td>
+        <td class="mono font-xs">${s.imei_number || '—'}</td>
+        <td><span class="badge badge-info">${s.cashier_name || `#${s.cashier_id}`}</span></td>
+        <td class="amount-cell">${fmtKES(s.sale_price)}</td>
+        <td><span class="badge badge-${s.payment_method}">${s.payment_method}</span></td>
+        <td>${fmtDateTime(s.sold_at)}</td>
+        <td>
+          <button class="btn btn-ghost btn-sm" onclick="openDashReceipt('${safeSale}')" title="View & Print Receipt">
+            <i class="fa-solid fa-receipt"></i> Receipt
+          </button>
+        </td>
+      </tr>`;
+  }).join('');
 
   return `
     <div class="card glass" style="margin-top:14px">
@@ -147,8 +160,14 @@ function renderSoldTodayTable(branch) {
         <table class="data-table">
           <thead>
             <tr>
-              <th>#</th><th>Item ID</th><th>Cashier</th>
-              <th>Amount</th><th>Payment</th><th>Time</th>
+              <th>Receipt #</th>
+              <th>Product / Item</th>
+              <th>IMEI / Serial</th>
+              <th>Cashier</th>
+              <th>Amount</th>
+              <th>Payment</th>
+              <th>Time</th>
+              <th>Receipt</th>
             </tr>
           </thead>
           <tbody>${rows}</tbody>
@@ -280,7 +299,7 @@ function renderHistoryTable(sales) {
   document.getElementById('histTotalRevenue').textContent = fmtKES(totalRev);
 
   if (!sales.length) {
-    tbody.innerHTML = '<tr><td colspan="7" class="table-empty">No sales records for this period.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" class="table-empty">No sales records for this period.</td></tr>';
     return;
   }
 
@@ -299,18 +318,70 @@ function renderHistoryTable(sales) {
     if (x.id !== undefined)      shopMap[x.id]      = x.name;
   });
 
-  tbody.innerHTML = sales.map(s => `
-    <tr>
-      <td>#${s.id}</td>
-      <td class="mono">${s.imei_item_id}</td>
-      <td><span class="badge badge-info">${cashierMap[s.cashier_id] || `#${s.cashier_id}`}</span></td>
-      <td>${shopMap[s.shop_id] || `#${s.shop_id}`}</td>
-      <td class="amount-cell">${fmtKES(s.sale_price)}</td>
-      <td><span class="badge badge-${s.payment_method}">${s.payment_method}</span></td>
-      <td>${fmtDateTime(s.sold_at)}</td>
-    </tr>
-  `).join('');
+  tbody.innerHTML = sales.map(s => {
+    const itemLabel = (s.product_brand && s.product_model)
+      ? `${s.product_brand} ${s.product_model}`
+      : `Item #${s.imei_item_id}`;
+    const rcpNo = s.receipt_number || `RCP-${String(s.id).padStart(6, '0')}`;
+    const cashierName = s.cashier_name || cashierMap[s.cashier_id] || `#${s.cashier_id}`;
+    const branchName  = s.shop_name || shopMap[s.shop_id] || `#${s.shop_id}`;
+    const safeSale = encodeURIComponent(JSON.stringify({ ...s, cashier_name: cashierName, shop_name: branchName }));
+
+    return `
+      <tr>
+        <td class="mono font-semibold" style="color:var(--clr-accent)">${rcpNo}</td>
+        <td><strong>${itemLabel}</strong></td>
+        <td class="mono font-xs">${s.imei_number || '—'}</td>
+        <td><span class="badge badge-info">${cashierName}</span></td>
+        <td>${branchName}</td>
+        <td class="amount-cell">${fmtKES(s.sale_price)}</td>
+        <td><span class="badge badge-${s.payment_method}">${s.payment_method}</span></td>
+        <td>${fmtDateTime(s.sold_at)}</td>
+        <td>
+          <button class="btn btn-ghost btn-sm" onclick="openDashReceipt('${safeSale}')" title="View & Print Receipt">
+            <i class="fa-solid fa-receipt"></i> Receipt
+          </button>
+        </td>
+      </tr>`;
+  }).join('');
 }
+
+// ── Open Dashboard Receipt Modal ──────────────────────────────────────────────
+function openDashReceipt(encodedSaleJson) {
+  try {
+    const s = JSON.parse(decodeURIComponent(encodedSaleJson));
+    const now = s.sold_at ? new Date(s.sold_at) : new Date();
+
+    const shopName = s.shop_name || getSession().shopName || 'PhonePOS';
+    document.getElementById('dmShopName').textContent = shopName;
+    document.getElementById('dmShopLocation').textContent = s.shop_location || '';
+    document.getElementById('dmDateTime').textContent = now.toLocaleString('en-KE', {
+      dateStyle: 'medium', timeStyle: 'short',
+    });
+
+    document.getElementById('dmReceiptNo').textContent = s.receipt_number || `RCP-${String(s.id).padStart(6, '0')}`;
+    document.getElementById('dmItem').textContent = (s.product_brand && s.product_model)
+      ? `${s.product_brand} ${s.product_model}`
+      : `Item #${s.imei_item_id}`;
+
+    const cat = s.product_category || 'General';
+    document.getElementById('dmCategory').textContent = cat.charAt(0).toUpperCase() + cat.slice(1);
+    document.getElementById('dmImei').textContent = s.imei_number || '—';
+    document.getElementById('dmCashier').textContent = s.cashier_name || 'Staff';
+    document.getElementById('dmPayment').textContent = (s.payment_method || 'CASH').toUpperCase();
+    document.getElementById('dmAmount').textContent = fmtKES(s.sale_price || 0);
+
+    document.getElementById('dashReceiptModal').classList.remove('hidden');
+  } catch (err) {
+    console.error('Error opening receipt:', err);
+  }
+}
+window.openDashReceipt = openDashReceipt;
+
+// Wire Print button inside Dash Receipt modal
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('dmPrintBtn')?.addEventListener('click', () => window.print());
+});
 
 // ── Extend getSession to include userId ───────────────────────────────────────
 const _origGetSession = window.getSession;

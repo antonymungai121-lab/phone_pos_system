@@ -181,4 +181,28 @@ def get_sales_history(
         if date_to:
             query = query.filter(models.Sale.sold_at <= date_to + " 23:59:59")
 
-    return query.order_by(models.Sale.sold_at.desc()).all()
+    sales = query.order_by(models.Sale.sold_at.desc()).all()
+    results = []
+    for s in sales:
+        item = s.item
+        prod = item.product if item else None
+        sh = s.shop
+        cashier = s.cashier
+        results.append({
+            "id": s.id,
+            "imei_item_id": s.imei_item_id,
+            "shop_id": s.shop_id,
+            "cashier_id": s.cashier_id,
+            "sale_price": s.sale_price,
+            "payment_method": s.payment_method,
+            "sold_at": s.sold_at,
+            "product_brand": prod.brand if prod else "",
+            "product_model": prod.model if prod else "",
+            "product_category": prod.category if prod else "",
+            "imei_number": item.imei_number if item else "",
+            "cashier_name": cashier.username if cashier else "",
+            "shop_name": sh.name if sh else "",
+            "shop_location": sh.location if sh else "",
+            "receipt_number": f"RCP-{s.id:06d}",
+        })
+    return results

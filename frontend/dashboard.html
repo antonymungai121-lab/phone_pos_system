@@ -155,6 +155,49 @@
       margin: 32px 0;
     }
     .no-data { color: var(--txt-muted); font-size: .88rem; padding: 10px 0; }
+
+    /* Receipt modal styles */
+    .receipt-modal-box {
+      max-width: 420px !important;
+      padding: 24px;
+    }
+    .receipt-header {
+      text-align: center; padding: 6px 0 10px;
+      border-bottom: 1px dashed var(--clr-border);
+    }
+    .receipt-header h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 2px; }
+    .receipt-header p  { font-size: .78rem; color: var(--txt-muted); }
+    .receipt-row {
+      display: flex; justify-content: space-between; padding: 6px 0;
+      border-bottom: 1px solid rgba(255,255,255,.04); font-size: .85rem;
+    }
+    .receipt-row .rl { color: var(--txt-muted); }
+    .receipt-row .rv { font-weight: 600; }
+    .receipt-rcpno .rv { color: var(--clr-accent); font-size: .9rem; }
+    .receipt-divider { border-top: 1px dashed var(--clr-border); margin: 6px 0; }
+    .receipt-total {
+      display: flex; justify-content: space-between; padding: 10px 0 0;
+      font-weight: 800; font-size: 1.05rem; color: var(--clr-primary);
+    }
+    .receipt-footer-msg {
+      text-align: center; font-size: .78rem; color: var(--txt-muted);
+      margin: 14px 0 4px; font-style: italic;
+    }
+    @media print {
+      body * { visibility: hidden; }
+      #dashReceiptModal, #dashReceiptModal * { visibility: visible; }
+      #dashReceiptModal .modal-box {
+        position: absolute; left: 0; top: 0;
+        width: 80mm; padding: 10px;
+        background: #fff !important; color: #000 !important;
+        border: none !important; box-shadow: none !important;
+      }
+      #dashReceiptModal .receipt-header h3,
+      #dashReceiptModal .receipt-row .rv,
+      #dashReceiptModal .receipt-total { color: #000 !important; }
+      #dashReceiptModal .modal-header,
+      #dashReceiptModal .modal-actions { display: none !important; }
+    }
   </style>
 </head>
 <body class="app-page">
@@ -259,19 +302,53 @@
         <table class="data-table" id="historyTable">
           <thead>
             <tr>
-              <th>#</th>
-              <th>Item ID</th>
+              <th>Receipt #</th>
+              <th>Item / Product</th>
+              <th>IMEI / Serial</th>
               <th>Cashier</th>
               <th>Branch</th>
               <th>Amount (KES)</th>
               <th>Payment</th>
               <th>Date &amp; Time</th>
+              <th>Action</th>
             </tr>
           </thead>
           <tbody id="historyTbody">
-            <tr><td colspan="7" class="table-empty">Select a period above.</td></tr>
+            <tr><td colspan="9" class="table-empty">Select a period above.</td></tr>
           </tbody>
         </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ Receipt Preview Modal ════════════════════════════════════════ -->
+  <div id="dashReceiptModal" class="modal-overlay hidden" role="dialog">
+    <div class="modal-box glass receipt-modal-box">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-receipt"></i> Sales Receipt</h3>
+        <button class="modal-close" data-close="dashReceiptModal">✕</button>
+      </div>
+      <div class="receipt-header">
+        <h3 id="dmShopName">PhonePOS</h3>
+        <p id="dmShopLocation"></p>
+        <p id="dmDateTime">&mdash;</p>
+      </div>
+      <div class="receipt-row receipt-rcpno"><span class="rl">Receipt #</span><span class="rv mono" id="dmReceiptNo">—</span></div>
+      <div class="receipt-divider"></div>
+      <div class="receipt-row"><span class="rl">Item</span><span class="rv" id="dmItem">—</span></div>
+      <div class="receipt-row"><span class="rl">Category</span><span class="rv" id="dmCategory">—</span></div>
+      <div class="receipt-row"><span class="rl">IMEI / Serial</span><span class="rv mono" id="dmImei">—</span></div>
+      <div class="receipt-divider"></div>
+      <div class="receipt-row"><span class="rl">Served By</span><span class="rv" id="dmCashier">—</span></div>
+      <div class="receipt-row"><span class="rl">Payment</span><span class="rv" id="dmPayment">—</span></div>
+      <div class="receipt-divider"></div>
+      <div class="receipt-total"><span>TOTAL</span><span id="dmAmount">—</span></div>
+      <p class="receipt-footer-msg">Thank you for shopping with us!</p>
+      <div class="modal-actions" style="margin-top:14px">
+        <button type="button" class="btn btn-ghost" data-close="dashReceiptModal">Close</button>
+        <button type="button" class="btn btn-primary" id="dmPrintBtn">
+          <i class="fa-solid fa-print"></i> Print Receipt
+        </button>
       </div>
     </div>
   </div>
