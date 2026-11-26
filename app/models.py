@@ -30,6 +30,8 @@ class Product(Base):
     category       = Column(String, default="phone", nullable=False)
     # For accessories: charger | earphone | earpod | back_cover | screen_protector | other
     accessory_type = Column(String, nullable=True)
+    # Optional free-text detail, e.g. "128GB", "Space Grey", "Fast Charge 65W"
+    details        = Column(String, nullable=True)
 
     # Relationships
     inventory = relationship("IMEIItem", back_populates="product")

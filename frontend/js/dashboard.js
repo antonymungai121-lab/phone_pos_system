@@ -123,8 +123,9 @@ function renderSoldTodayTable(branch) {
   }
 
   const rows = branch.sold_today.map(s => {
+    const detailSuffix = s.product_details ? ` (${s.product_details})` : '';
     const itemLabel = (s.product_brand && s.product_model)
-      ? `${s.product_brand} ${s.product_model}`
+      ? `${s.product_brand} ${s.product_model}${detailSuffix}`
       : `Item #${s.imei_item_id}`;
     const rcpNo = s.receipt_number || `RCP-${String(s.id).padStart(6, '0')}`;
     const safeSale = encodeURIComponent(JSON.stringify(s));
@@ -360,8 +361,9 @@ function openDashReceipt(encodedSaleJson) {
     });
 
     document.getElementById('dmReceiptNo').textContent = s.receipt_number || `RCP-${String(s.id).padStart(6, '0')}`;
+    const detailSuffix = s.product_details ? ` (${s.product_details})` : '';
     document.getElementById('dmItem').textContent = (s.product_brand && s.product_model)
-      ? `${s.product_brand} ${s.product_model}`
+      ? `${s.product_brand} ${s.product_model}${detailSuffix}`
       : `Item #${s.imei_item_id}`;
 
     const cat = s.product_category || 'General';

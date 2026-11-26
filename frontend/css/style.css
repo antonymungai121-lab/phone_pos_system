@@ -640,7 +640,7 @@ select {
   outline:       none;
 }
 
-.input-wrap input { padding-left: 38px; }
+.input-wrap input { padding-left: 38px; padding-right: 42px; }
 
 input:focus, select:focus {
   border-color: var(--clr-primary);
@@ -656,12 +656,37 @@ select option { background: var(--clr-surface); }
   background: none;
   border:     none;
   cursor:     pointer;
-  font-size:  1rem;
+  font-size:  1.05rem;
   color:      var(--txt-muted);
-  padding:    4px;
+  padding:    6px 8px;
   transition: color var(--t-fast);
+  z-index:    10;
+  display:    inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 .pwd-toggle:hover { color: var(--txt-primary); }
+
+tr.clickable-row {
+  cursor: pointer;
+  transition: background var(--t-fast);
+}
+tr.clickable-row:hover {
+  background: rgba(56, 189, 248, 0.08) !important;
+}
+
+.item-detail-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: .75rem;
+  color: var(--txt-secondary);
+  background: rgba(255, 255, 255, .05);
+  border: 1px solid var(--clr-border);
+  padding: 2px 7px;
+  border-radius: var(--radius-sm);
+  margin-top: 4px;
+}
 
 /* ── Alerts ───────────────────────────────────────────────── */
 .alert {

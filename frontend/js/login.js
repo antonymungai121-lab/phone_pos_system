@@ -10,6 +10,25 @@
 
 document.addEventListener('DOMContentLoaded', async () => {
 
+  // ── Password toggle buttons (wire synchronously before network calls) ─────
+  function initPasswordToggles() {
+    document.querySelectorAll('.pwd-toggle').forEach(btn => {
+      // Remove any previous listener by cloning if needed, or simple direct handler
+      btn.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const target = document.getElementById(btn.dataset.target);
+        if (!target) return;
+        const isText = target.type === 'text';
+        target.type = isText ? 'password' : 'text';
+        btn.innerHTML = isText
+          ? '<i class="fa-regular fa-eye"></i>'
+          : '<i class="fa-regular fa-eye-slash"></i>';
+      };
+    });
+  }
+  initPasswordToggles();
+
   // ── Already logged in? Go straight to dashboard ──────────────────────────
   if (sessionStorage.getItem('pos_token')) {
     window.location.replace('dashboard.html');
@@ -82,17 +101,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       shopFld.classList.add('hidden');
       document.getElementById('registerBtn').classList.add('hidden');
     }
+    initPasswordToggles();
   }
-
-  // ── Password toggle buttons ───────────────────────────────────────────────
-  document.querySelectorAll('.pwd-toggle').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const target = document.getElementById(btn.dataset.target);
-      const isText = target.type === 'text';
-      target.type = isText ? 'password' : 'text';
-      btn.innerHTML = isText ? '<i class="fa-regular fa-eye"></i>' : '<i class="fa-regular fa-eye-slash"></i>';
-    });
-  });
 
   // ── Shared: save session and redirect ────────────────────────────────────
   function saveSessionAndRedirect(data) {

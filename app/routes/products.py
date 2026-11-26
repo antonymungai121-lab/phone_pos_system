@@ -1,7 +1,7 @@
 import logging
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, text
 from app.database import get_db
 from app import models, schemas
 from app.auth import require_manager, get_current_user
@@ -83,6 +83,7 @@ def get_product_stock_overview(
             "price":          float(p.price),
             "category":       p.category,
             "accessory_type": p.accessory_type,
+            "details":        p.details,
             "branches":       branches,
         })
 
@@ -108,6 +109,7 @@ def add_product(
         price          = product.price,
         category       = product.category,
         accessory_type = product.accessory_type,
+        details        = product.details,
     )
     db.add(new_prod)
     db.commit()
@@ -135,6 +137,7 @@ def update_product(
     db_prod.price          = product_update.price
     db_prod.category       = product_update.category
     db_prod.accessory_type = product_update.accessory_type
+    db_prod.details        = product_update.details
     db.commit()
     db.refresh(db_prod)
     logger.info("Product %s updated by %s", product_id, current_user.username)

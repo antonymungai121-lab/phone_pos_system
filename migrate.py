@@ -54,6 +54,12 @@ else:
 prod_cols = get_columns(cursor, "products")
 print(f"products columns: {prod_cols}")
 
+if "details" not in prod_cols:
+    cursor.execute("ALTER TABLE products ADD COLUMN details TEXT")
+    print("  ✅ Added `details` column to products table.")
+else:
+    print("  ℹ️  products.details already exists — skipping.")
+
 conn.commit()
 conn.close()
 

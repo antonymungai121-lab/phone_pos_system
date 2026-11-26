@@ -72,6 +72,7 @@ def get_dashboard_stats(
                 models.Product.brand.label("product_brand"),
                 models.Product.model.label("product_model"),
                 models.Product.category.label("product_category"),
+                models.Product.details.label("product_details"),
             )
             .join(models.User, models.Sale.cashier_id == models.User.id)
             .outerjoin(models.IMEIItem, models.Sale.imei_item_id == models.IMEIItem.id)
@@ -99,6 +100,7 @@ def get_dashboard_stats(
                 "product_brand": r.product_brand or "",
                 "product_model": r.product_model or "",
                 "product_category": r.product_category or "",
+                "product_details": r.product_details or "",
                 "imei_number": r.imei_number or "",
                 "receipt_number": f"RCP-{r.id:06d}",
             }

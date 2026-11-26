@@ -22,6 +22,20 @@ logger = logging.getLogger(__name__)
 # ── Database initialisation ───────────────────────────────────────────────────
 Base.metadata.create_all(bind=engine)
 
+# ── Auto-migrate missing columns ──────────────────────────────────────────────
+from sqlalchemy import inspect, text
+try:
+    with engine.connect() as conn:
+        inspector = inspect(engine)
+        if "products" in inspector.get_table_names():
+            columns = [c["name"] for c in inspector.get_columns("products")]
+            if "details" not in columns:
+                conn.execute(text("ALTER TABLE products ADD COLUMN details VARCHAR"))
+                conn.commit()
+                logger.info("Auto-migrated: added `details` column to products table.")
+except Exception as e:
+    logger.warning("Auto-migration check notice: %s", e)
+
 # ── App factory ───────────────────────────────────────────────────────────────
 app = FastAPI(
     title="Multi-Shop Phone POS API",

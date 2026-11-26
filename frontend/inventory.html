@@ -148,21 +148,164 @@
               <th>#</th>
               <th>IMEI / Serial</th>
               <th>Brand</th>
-              <th>Model</th>
+              <th>Model / Specs</th>
               <th>Category</th>
               <th>Branch</th>
               <th>Status</th>
               <th>Date Added</th>
               <th>Date Sold</th>
+              <th>Action</th>
             </tr>
           </thead>
           <tbody id="inventoryTbody">
-            <tr><td colspan="9" class="table-empty">Loading&hellip;</td></tr>
+            <tr><td colspan="10" class="table-empty">Loading&hellip;</td></tr>
           </tbody>
         </table>
       </div>
     </div>
   </main>
+
+  <!-- ══ INVENTORY ITEM ACTIONS MODAL ═══════════════════════════════════════ -->
+  <div id="invActionModal" class="modal-overlay hidden" role="dialog" aria-labelledby="invModalTitle">
+    <div class="modal-box glass wide">
+      <div class="modal-header">
+        <h3 id="invModalTitle"><i class="fa-solid fa-box-open"></i> Inventory Item Actions</h3>
+        <button class="modal-close" data-close="invActionModal"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div style="padding: 10px 0 16px;">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+          <div>
+            <div id="modalItemName" style="font-size:1.15rem;font-weight:700;">—</div>
+            <div id="modalItemMeta" style="font-size:.82rem;color:var(--txt-secondary);margin-top:2px;">—</div>
+            <div id="modalItemDetails" class="item-detail-badge" style="display:none;margin-top:4px;"></div>
+          </div>
+          <div>
+            <span id="modalItemStatus" class="badge">—</span>
+          </div>
+        </div>
+
+        <div style="background:rgba(255,255,255,.03);border:1px solid var(--clr-border);border-radius:var(--radius-sm);padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:.82rem;margin-bottom:18px;">
+          <div>
+            <span style="color:var(--txt-muted);display:block;font-size:.72rem;text-transform:uppercase;margin-bottom:2px;">IMEI / Serial</span>
+            <strong id="modalItemImei" class="mono" style="font-size:.88rem;word-break:break-all;">—</strong>
+          </div>
+          <div>
+            <span style="color:var(--txt-muted);display:block;font-size:.72rem;text-transform:uppercase;margin-bottom:2px;">Selling Price</span>
+            <strong id="modalItemPrice" style="color:var(--clr-primary);font-size:.95rem;">—</strong>
+          </div>
+          <div>
+            <span style="color:var(--txt-muted);display:block;font-size:.72rem;text-transform:uppercase;margin-bottom:2px;">Current Branch</span>
+            <span id="modalItemBranch">—</span>
+          </div>
+          <div>
+            <span style="color:var(--txt-muted);display:block;font-size:.72rem;text-transform:uppercase;margin-bottom:2px;">Date Added</span>
+            <span id="modalItemDate">—</span>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <!-- SELL BUTTON: available only -->
+          <button id="modalActionSell" class="btn btn-primary" style="justify-content:center;padding:12px;font-size:.9rem;">
+            <i class="fa-solid fa-cash-register"></i> Sell this Item (Go to POS)
+          </button>
+
+          <!-- EDIT BUTTON: admin / manager -->
+          <button id="modalActionEdit" class="btn btn-ghost" style="justify-content:center;padding:12px;border:1px solid var(--clr-border);font-size:.9rem;">
+            <i class="fa-solid fa-pen-to-square"></i> Edit Product (Price / Details)
+          </button>
+
+          <!-- TRANSFER BUTTON: available only, admin / manager -->
+          <button id="modalActionTransfer" class="btn btn-ghost" style="justify-content:center;padding:12px;border:1px solid var(--clr-border);font-size:.9rem;">
+            <i class="fa-solid fa-right-left"></i> Transfer to Another Branch
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ INVENTORY EDIT PRODUCT MODAL ═════════════════════════════════════════ -->
+  <div id="invEditModal" class="modal-overlay hidden" role="dialog">
+    <div class="modal-box glass wide">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-pen-to-square"></i> Edit Product Information</h3>
+        <button class="modal-close" data-close="invEditModal"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <p style="font-size:.78rem;color:var(--txt-secondary);margin-bottom:14px;">
+        <i class="fa-solid fa-circle-info" style="color:var(--clr-primary)"></i> Changes made to this product will be reflected across all branches.
+      </p>
+      <form id="invEditForm" class="pos-form">
+        <input type="hidden" id="invEditProductId" />
+        <input type="hidden" id="invEditCategory" />
+        <input type="hidden" id="invEditAccType" />
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="invEditBrand">Brand</label>
+            <input type="text" id="invEditBrand" required />
+          </div>
+          <div class="form-group">
+            <label for="invEditModel">Model / Name</label>
+            <input type="text" id="invEditModel" required />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="invEditDetails">Specific Details (e.g. Storage / RAM / Color)</label>
+          <input type="text" id="invEditDetails" placeholder="e.g. 128 GB, 256 GB, Space Grey" />
+        </div>
+
+        <div class="form-group">
+          <label for="invEditPrice">Selling Price (KES)</label>
+          <div class="input-wrap">
+            <span class="input-icon">KES</span>
+            <input type="number" id="invEditPrice" min="1" step="0.01" required />
+          </div>
+        </div>
+
+        <div id="invEditError" class="alert alert-error hidden"></div>
+        <div id="invEditSuccess" class="alert alert-success hidden"></div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" data-close="invEditModal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Save Product Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ══ INVENTORY TRANSFER MODAL ════════════════════════════════════════════ -->
+  <div id="invTransferModal" class="modal-overlay hidden" role="dialog">
+    <div class="modal-box glass wide">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-right-left"></i> Transfer Item to Branch</h3>
+        <button class="modal-close" data-close="invTransferModal"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="invTransferForm" class="pos-form">
+        <input type="hidden" id="invTransferItemId" />
+
+        <div class="form-group">
+          <label>Item</label>
+          <div id="invTransferItemLabel" style="font-weight:600;padding:10px 14px;background:rgba(255,255,255,.04);border-radius:var(--radius-md);border:1px solid var(--clr-border);">—</div>
+        </div>
+
+        <div class="form-group">
+          <label for="invTransferToShop">Destination Branch</label>
+          <select id="invTransferToShop" required>
+            <option value="">— select destination branch —</option>
+          </select>
+        </div>
+
+        <div id="invTransferError" class="alert alert-error hidden"></div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" data-close="invTransferModal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="fa-solid fa-right-left"></i> Confirm Transfer</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <script src="js/api.js"></script>
   <script src="js/app.js"></script>

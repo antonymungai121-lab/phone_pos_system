@@ -107,6 +107,7 @@ function renderGrid() {
     items = items.filter(p =>
       p.brand.toLowerCase().includes(_searchQ) ||
       p.model.toLowerCase().includes(_searchQ) ||
+      (p.details || '').toLowerCase().includes(_searchQ) ||
       (p.accessory_type || '').toLowerCase().includes(_searchQ)
     );
   }
@@ -177,6 +178,7 @@ function renderProductCard(p) {
         <div>
           <div class="product-name">${p.brand} ${p.model}</div>
           <div class="product-meta">${catLabel}</div>
+          ${p.details ? `<div class="item-detail-badge"><i class="fa-solid fa-circle-info" style="font-size:.7rem;color:var(--clr-primary)"></i> ${p.details}</div>` : ''}
           <div class="product-price">${fmtKES(p.price)}</div>
         </div>
       </div>
@@ -245,6 +247,7 @@ function wireAddCategoryModal() {
         price: parseFloat(document.getElementById('phonePrice').value),
         category: 'phone',
         accessory_type: null,
+        details: document.getElementById('phoneDetails').value.trim() || null,
       });
       showAlert('✅ Phone model added!');
       document.getElementById('addCategoryModal').classList.add('hidden');
@@ -269,6 +272,7 @@ function wireAddCategoryModal() {
         price: parseFloat(document.getElementById('accPrice').value),
         category: 'accessory',
         accessory_type: accType,
+        details: document.getElementById('accDetails').value.trim() || null,
       });
       showAlert('✅ Accessory category added!');
       document.getElementById('addCategoryModal').classList.add('hidden');
@@ -477,6 +481,8 @@ function openEditProduct(productId) {
   document.getElementById('editPrice').value     = p.price;
   document.getElementById('editCategory').value  = p.category;
   document.getElementById('editAccType').value   = p.accessory_type || '';
+  const detailsEl = document.getElementById('editDetails');
+  if (detailsEl) detailsEl.value = p.details || '';
 
   // Set category button highlight
   document.querySelectorAll('#editCatRow .type-btn').forEach(b => {
@@ -558,6 +564,7 @@ function wireEditProductModal() {
       price:          parseFloat(document.getElementById('editPrice').value),
       category,
       accessory_type: category === 'accessory' ? accType : null,
+      details:        document.getElementById('editDetails')?.value.trim() || null,
     };
 
     const btn = e.submitter; btn.disabled = true; btn.textContent = 'Saving…';

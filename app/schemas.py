@@ -24,6 +24,7 @@ class ProductCreate(BaseModel):
     price:          Decimal = Field(..., gt=0, decimal_places=2, description="Selling price in KES")
     category:       Literal["phone", "accessory"] = "phone"
     accessory_type: Optional[str] = None   # charger|earphone|earpod|back_cover|screen_protector|other
+    details:        Optional[str] = None   # e.g. "128GB", "Space Grey", "Fast Charge 65W"
 
 
 class ProductResponse(BaseModel):
@@ -33,6 +34,7 @@ class ProductResponse(BaseModel):
     price:          Decimal
     category:       str
     accessory_type: Optional[str] = None
+    details:        Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -98,6 +100,7 @@ class SaleResponse(BaseModel):
     product_brand:  str = ""
     product_model:  str = ""
     product_category: str = ""
+    product_details:  str = ""
     imei_number:    str = ""
     cashier_name:   str = ""
     shop_name:      str = ""
@@ -119,6 +122,7 @@ class SaleReceiptResponse(BaseModel):
     product_brand:  str = ""
     product_model:  str = ""
     product_category: str = ""
+    product_details:  str = ""
     imei_number:    str = ""
     cashier_name:   str = ""
     shop_name:      str = ""

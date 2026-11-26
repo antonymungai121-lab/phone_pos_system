@@ -55,6 +55,46 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     });
 
+    // ── URL Query params from Inventory Sell ──────────────────────────────────
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlImei = urlParams.get('imei');
+    const urlProdId = urlParams.get('product_id');
+
+    if (urlImei) {
+      const item = _allInventory.find(i => i.imei_number === urlImei);
+      let prod = item ? _allProducts.find(p => p.id === item.product_id) : null;
+      if (!prod && urlProdId) {
+        prod = _allProducts.find(p => p.id === parseInt(urlProdId, 10));
+      }
+
+      if (prod && prod.category === 'accessory') {
+        if (accSelect) {
+          accSelect.value = prod.id;
+          document.getElementById('accSalePrice').value = prod.price;
+          document.getElementById('accessoryForm')?.scrollIntoView({ behavior: 'smooth' });
+          document.getElementById('accSalePrice')?.focus();
+        }
+      } else {
+        const imeiInput = document.getElementById('imeiInput');
+        const fillInfo  = document.getElementById('imeiFillInfo');
+        const fillText  = document.getElementById('imeiFillText');
+        const priceEl   = document.getElementById('imeiSalePrice');
+        const priceSugg = document.getElementById('priceSuggested');
+
+        imeiInput.value = urlImei;
+        if (prod) {
+          const detailSuffix = prod.details ? ` (${prod.details})` : '';
+          fillText.textContent = `${prod.brand} ${prod.model}${detailSuffix}`;
+          fillInfo.classList.add('visible');
+          priceEl.value = prod.price;
+          priceSugg.textContent = `Suggested: ${fmtKES(prod.price)} (editable)`;
+        }
+        document.getElementById('imeiForm')?.scrollIntoView({ behavior: 'smooth' });
+        priceEl.focus();
+        priceEl.select();
+      }
+    }
+
   } catch (err) {
     showAlert('Could not load products: ' + err.message, 'error');
   }
@@ -73,7 +113,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (item) {
         const prod = _allProducts.find(p => p.id === item.product_id);
         if (prod) {
-          fillText.textContent = `${prod.brand} ${prod.model}`;
+          const detailSuffix = prod.details ? ` (${prod.details})` : '';
+          fillText.textContent = `${prod.brand} ${prod.model}${detailSuffix}`;
           fillInfo.classList.add('visible');
           if (!priceEl.value) {
             priceEl.value  = prod.price;
@@ -213,8 +254,9 @@ function renderReceipt({ item, sale, cashier }) {
   if (rcpNoEl) rcpNoEl.textContent = sale.receipt_number || `RCP-${String(sale.id || 0).padStart(6, '0')}`;
 
   // Item details
+  const detailSuffix = sale.product_details ? ` (${sale.product_details})` : '';
   const itemLabel = (sale.product_brand && sale.product_model)
-    ? `${sale.product_brand} ${sale.product_model}`
+    ? `${sale.product_brand} ${sale.product_model}${detailSuffix}`
     : (item || 'Item');
   const itemEl = document.getElementById('rItem');
   if (itemEl) itemEl.textContent = itemLabel;

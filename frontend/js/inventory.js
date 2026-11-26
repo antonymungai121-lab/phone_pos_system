@@ -82,6 +82,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   await loadInventory();
   wireFilters();
+  wireInventoryModals();
 });
 
 // ── Branch pills (admin) ──────────────────────────────────────────────────────
@@ -126,7 +127,7 @@ async function selectBranch(shopId) {
 async function loadInventory() {
   const { role, shopId } = getSession();
   const tbody = document.getElementById('inventoryTbody');
-  tbody.innerHTML = '<tr><td colspan="9" class="table-empty"><i class="fa-solid fa-spinner fa-spin"></i> Loading&hellip;</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="10" class="table-empty"><i class="fa-solid fa-spinner fa-spin"></i> Loading&hellip;</td></tr>';
 
   try {
     const params = {};
@@ -134,7 +135,7 @@ async function loadInventory() {
     _allInventory = await api.getInventory(params);
     applyFilters();
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="9" class="table-empty">Error: ${err.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" class="table-empty">Error: ${err.message}</td></tr>`;
   }
 }
 
@@ -157,7 +158,7 @@ function applyFilters() {
   if (_searchQ) {
     items = items.filter(i => {
       const p = _products.find(p => p.id === i.product_id);
-      const name = p ? `${p.brand} ${p.model}`.toLowerCase() : '';
+      const name = p ? `${p.brand} ${p.model} ${p.details || ''}`.toLowerCase() : '';
       return i.imei_number.toLowerCase().includes(_searchQ) || name.includes(_searchQ);
     });
   }
@@ -185,7 +186,7 @@ function renderKPIs(items) {
 function renderTable(items) {
   const tbody = document.getElementById('inventoryTbody');
   if (!items.length) {
-    tbody.innerHTML = '<tr><td colspan="9" class="table-empty">No items match the current filter.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" class="table-empty">No items match the current filter.</td></tr>';
     return;
   }
 
@@ -195,13 +196,19 @@ function renderTable(items) {
     const model = prod ? prod.model : `Product #${item.product_id}`;
     const cat   = prod ? prod.category : '—';
     const shop  = _shops.find(s => s.id === item.shop_id);
+    const details = (prod && prod.details)
+      ? `<div class="item-detail-badge"><i class="fa-solid fa-circle-info" style="font-size:.68rem;color:var(--clr-primary)"></i> ${prod.details}</div>`
+      : '';
 
     return `
-      <tr>
+      <tr class="clickable-row" onclick="openItemActions(${item.id})" title="Click to view actions for this item">
         <td>${idx + 1}</td>
         <td class="mono">${item.imei_number}</td>
         <td>${brand}</td>
-        <td>${model}</td>
+        <td>
+          <div style="font-weight:600">${model}</div>
+          ${details}
+        </td>
         <td>
           <span class="badge badge-${cat === 'phone' ? 'mpesa' : 'card'}" style="font-size:.7rem">
             ${cat === 'phone' ? '📱 Phone' : '🔌 Accessory'}
@@ -211,6 +218,11 @@ function renderTable(items) {
         <td><span class="badge badge-${item.status.toLowerCase()}">${item.status}</span></td>
         <td>${fmtDateTime(item.date_added)}</td>
         <td>${item.date_sold ? fmtDateTime(item.date_sold) : '—'}</td>
+        <td>
+          <button type="button" class="btn btn-ghost" style="padding:4px 10px;font-size:.78rem;" onclick="event.stopPropagation();openItemActions(${item.id})">
+            <i class="fa-solid fa-ellipsis"></i> Actions
+          </button>
+        </td>
       </tr>`;
   }).join('');
 }
@@ -264,4 +276,173 @@ function renderSortBar() {
   });
   const tableCard = document.querySelector('.table-wrap')?.closest('.card');
   if (tableCard) tableCard.after(bar);
+}
+
+// ── Item Actions Modal (Sell / Edit / Transfer) ──────────────────────────────
+let _activeItem = null;
+let _activeProd = null;
+
+function openItemActions(itemId) {
+  const item = _allInventory.find(i => i.id === itemId);
+  if (!item) return;
+  const prod = _products.find(p => p.id === item.product_id);
+  const shop = _shops.find(s => s.id === item.shop_id);
+  const { role } = getSession();
+
+  _activeItem = item;
+  _activeProd = prod;
+
+  // Title and meta
+  document.getElementById('modalItemName').textContent = prod
+    ? `${prod.brand} ${prod.model}`
+    : `Product #${item.product_id}`;
+  document.getElementById('modalItemMeta').textContent = prod
+    ? (prod.category === 'phone' ? '📱 Phone' : `🔌 Accessory · ${(prod.accessory_type || 'other').toUpperCase()}`)
+    : '—';
+
+  // Specific detail (e.g. 128 GB)
+  const detailEl = document.getElementById('modalItemDetails');
+  if (prod && prod.details) {
+    detailEl.innerHTML = `<i class="fa-solid fa-circle-info" style="font-size:.7rem;color:var(--clr-primary)"></i> ${prod.details}`;
+    detailEl.style.display = 'inline-flex';
+  } else {
+    detailEl.style.display = 'none';
+  }
+
+  // Status
+  const statusEl = document.getElementById('modalItemStatus');
+  statusEl.textContent = item.status;
+  statusEl.className = `badge badge-${item.status.toLowerCase()}`;
+
+  // Fields
+  document.getElementById('modalItemImei').textContent = item.imei_number;
+  document.getElementById('modalItemPrice').textContent = prod ? fmtKES(prod.price) : '—';
+  document.getElementById('modalItemBranch').textContent = shop ? shop.name : `#${item.shop_id}`;
+  document.getElementById('modalItemDate').textContent = fmtDateTime(item.date_added);
+
+  // 1. Sell button (Available only)
+  const sellBtn = document.getElementById('modalActionSell');
+  if (item.status === 'Available') {
+    sellBtn.style.display = '';
+    sellBtn.onclick = () => {
+      window.location.href = `pos.html?imei=${encodeURIComponent(item.imei_number)}&product_id=${item.product_id}`;
+    };
+  } else {
+    sellBtn.style.display = 'none';
+  }
+
+  // 2. Edit button (Admin & Manager)
+  const editBtn = document.getElementById('modalActionEdit');
+  const canEdit = (role === 'admin' || role === 'manager');
+  editBtn.style.display = canEdit ? '' : 'none';
+  editBtn.onclick = () => {
+    document.getElementById('invActionModal').classList.add('hidden');
+    openInvEditModal(prod);
+  };
+
+  // 3. Transfer button (Available only AND Admin/Manager)
+  const transferBtn = document.getElementById('modalActionTransfer');
+  const canTransfer = (item.status === 'Available') && (role === 'admin' || role === 'manager');
+  transferBtn.style.display = canTransfer ? '' : 'none';
+  transferBtn.onclick = () => {
+    document.getElementById('invActionModal').classList.add('hidden');
+    openInvTransferModal(item, prod);
+  };
+
+  document.getElementById('invActionModal').classList.remove('hidden');
+}
+window.openItemActions = openItemActions;
+
+function openInvEditModal(prod) {
+  if (!prod) { showAlert('Product information unavailable.', 'error'); return; }
+  document.getElementById('invEditProductId').value = prod.id;
+  document.getElementById('invEditCategory').value  = prod.category;
+  document.getElementById('invEditAccType').value   = prod.accessory_type || '';
+  document.getElementById('invEditBrand').value     = prod.brand;
+  document.getElementById('invEditModel').value     = prod.model;
+  document.getElementById('invEditDetails').value   = prod.details || '';
+  document.getElementById('invEditPrice').value     = prod.price;
+
+  document.getElementById('invEditError').classList.add('hidden');
+  document.getElementById('invEditSuccess').classList.add('hidden');
+  document.getElementById('invEditModal').classList.remove('hidden');
+}
+
+function openInvTransferModal(item, prod) {
+  if (!item) return;
+  document.getElementById('invTransferItemId').value = item.id;
+  const label = prod ? `${prod.brand} ${prod.model} (${item.imei_number})` : item.imei_number;
+  document.getElementById('invTransferItemLabel').textContent = label;
+
+  const sel = document.getElementById('invTransferToShop');
+  sel.innerHTML = '<option value="">— select destination branch —</option>' +
+    _shops.filter(s => s.id !== item.shop_id).map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+
+  document.getElementById('invTransferError').classList.add('hidden');
+  document.getElementById('invTransferModal').classList.remove('hidden');
+}
+
+function wireInventoryModals() {
+  // Edit Form
+  const editForm = document.getElementById('invEditForm');
+  if (editForm) {
+    editForm.addEventListener('submit', async e => {
+      e.preventDefault();
+      hideError('invEditError');
+      const prodId = parseInt(document.getElementById('invEditProductId').value, 10);
+      const payload = {
+        brand: document.getElementById('invEditBrand').value.trim(),
+        model: document.getElementById('invEditModel').value.trim(),
+        price: parseFloat(document.getElementById('invEditPrice').value),
+        category: document.getElementById('invEditCategory').value,
+        accessory_type: document.getElementById('invEditAccType').value || null,
+        details: document.getElementById('invEditDetails').value.trim() || null,
+      };
+
+      const btn = e.submitter;
+      if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+
+      try {
+        await api.updateProduct(prodId, payload);
+        const ok = document.getElementById('invEditSuccess');
+        ok.textContent = '✅ Product updated! Changes reflected in all branches.';
+        ok.classList.remove('hidden');
+        showAlert('Product updated across all branches!');
+        // Reload products & inventory
+        _products = await api.getProducts();
+        await loadInventory();
+        setTimeout(() => document.getElementById('invEditModal').classList.add('hidden'), 1200);
+      } catch (err) {
+        showError('invEditError', err.message);
+      } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save Product Changes'; }
+      }
+    });
+  }
+
+  // Transfer Form
+  const transferForm = document.getElementById('invTransferForm');
+  if (transferForm) {
+    transferForm.addEventListener('submit', async e => {
+      e.preventDefault();
+      hideError('invTransferError');
+      const itemId   = parseInt(document.getElementById('invTransferItemId').value, 10);
+      const toShopId = parseInt(document.getElementById('invTransferToShop').value, 10);
+      if (!toShopId) { showError('invTransferError', 'Please select a destination branch.'); return; }
+
+      const btn = e.submitter;
+      if (btn) { btn.disabled = true; btn.textContent = 'Transferring…'; }
+
+      try {
+        const res = await api.transferStock({ item_id: itemId, to_shop_id: toShopId });
+        showAlert(`✅ ${res.detail}`);
+        document.getElementById('invTransferModal').classList.add('hidden');
+        await loadInventory();
+      } catch (err) {
+        showError('invTransferError', err.message);
+      } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-right-left"></i> Confirm Transfer'; }
+      }
+    });
+  }
 }
